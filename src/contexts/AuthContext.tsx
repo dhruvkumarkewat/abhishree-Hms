@@ -51,7 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // 2. Listen to real-time auth state changes from Supabase
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        if (!window.location.pathname.startsWith('/reset-password')) {
+          const hash = window.location.hash || '';
+          window.location.replace('/reset-password' + hash);
+          return;
+        }
+      }
       if (session?.user) {
         setUser(resolveUserFromSession(session.user));
       } else {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   ArrowRight, ShieldCheck, CalendarCheck, FlaskConical, Pill, BedDouble,
@@ -351,6 +351,15 @@ function Footer() {
 }
 
 export default function Landing() {
+  const nav = useNavigate();
+  useEffect(() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+      nav('/reset-password' + hash + (search && !hash.includes(search) ? search : ''), { replace: true });
+    }
+  }, [nav]);
+
   return (
     <div className="grain bg-ink-950">
       <Nav />

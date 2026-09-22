@@ -33,7 +33,21 @@ import { PrescriptionDoc, InvoiceDoc, LabReportDoc } from './pages/Documents';
 import { MyAppointments, MyRecords, MyPrescriptions, MyLab, MyBills } from './pages/PatientPortal';
 import type { JSX } from 'react';
 
+function handleRecoveryRedirect() {
+  if (typeof window === 'undefined') return;
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  if (
+    (hash.includes('type=recovery') || search.includes('type=recovery')) &&
+    !window.location.pathname.startsWith('/reset-password')
+  ) {
+    const target = '/reset-password' + hash + (search && !hash.includes(search) ? search : '');
+    window.location.replace(target);
+  }
+}
+
 handleGoogleRedirect();
+handleRecoveryRedirect();
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();

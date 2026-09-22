@@ -19,9 +19,30 @@ export default function ResetPassword() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if recovery session is active
+    // 1. Parse tokens from hash or search if present
+    const hash = window.location.hash || '';
+    const hashParams = new URLSearchParams(hash.startsWith('#') ? hash.substring(1) : hash);
+    const searchParams = new URLSearchParams(window.location.search);
+
+    const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data, error }) => {
+          if (!error && data.session) {
+            setHasSession(true);
+          }
+        });
+    }
+
+    // 2. Check existing recovery session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setHasSession(!!session);
+      if (session) {
+        setHasSession(true);
+      } else if (!accessToken) {
+        setHasSession(false);
+      }
     }).catch(() => {
       setHasSession(false);
     });
