@@ -17,6 +17,7 @@ import prescriptions from './_handlers/prescriptions.js';
 import radiology from './_handlers/radiology.js';
 import staff from './_handlers/staff.js';
 import vitals from './_handlers/vitals.js';
+import checkEmail from './_handlers/check-email.js';
 
 const routes = {
   admissions,
@@ -38,6 +39,8 @@ const routes = {
   radiology,
   staff,
   vitals,
+  'check-email': checkEmail,
+  checkEmail,
 };
 
 export default async function handler(req, res) {
