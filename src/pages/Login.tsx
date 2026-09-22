@@ -1,22 +1,20 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { signInWithGoogle, googleAvailable } from '../lib/googleAuth';
-import { DEMO_USERS } from '../lib/roles';
 
 export default function Login() {
   const nav = useNavigate();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('admin@abhishree.hospital');
-  const [password, setPassword] = useState('Admin@AbhiShree2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [showAccounts, setShowAccounts] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,12 +34,6 @@ export default function Login() {
       window.addEventListener('beforeunload', () => localStorage.removeItem('abhishree_session'), { once: true });
     }
     nav('/app', { replace: true });
-  };
-
-  const fill = (em: string, pw: string) => {
-    setEmail(em);
-    setPassword(pw);
-    setError('');
   };
 
   return (
@@ -146,36 +138,6 @@ export default function Login() {
               </>
             )}
           </form>
-
-          {/* Authorized Roles */}
-          <div className="mt-7 border hairline rounded-2xl overflow-hidden bg-white dark:bg-ink-900">
-            <button type="button" onClick={() => setShowAccounts(!showAccounts)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold">
-              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-teal-600" /> Authorized Roles & Staff Accounts</span>
-              <ChevronDown size={16} className={`transition-transform ${showAccounts ? 'rotate-180' : ''}`} />
-            </button>
-            {showAccounts && (
-              <div className="px-2 pb-2 max-h-64 overflow-y-auto scroll-thin">
-                <div className="px-3 py-1.5 text-xs opacity-50 font-medium">
-                  Verified via Supabase Authentication:
-                </div>
-                {DEMO_USERS.map((u) => (
-                  <button
-                    key={u.email}
-                    type="button"
-                    onClick={() => fill(u.email, u.password)}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 hover:bg-med-50 dark:hover:bg-sky-950 transition-colors ${email === u.email ? 'bg-med-50 dark:bg-sky-950' : ''}`}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-bold truncate">{u.name} <span className="opacity-50 font-semibold">· {u.role}</span></div>
-                      <div className="text-xs opacity-55 truncate">{u.email}</div>
-                    </div>
-                    <span className="text-[11px] font-mono opacity-50 shrink-0">••••••••</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           <p className="mt-6 text-center text-xs opacity-50">Protected by role-based access · All sessions are audit-logged</p>
         </motion.div>
       </div>

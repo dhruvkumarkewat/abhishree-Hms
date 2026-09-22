@@ -6,26 +6,23 @@ export interface DemoUser {
   name: string;
   email: string;
   role: Role;
-  password: string;
+  password?: string;
   link?: { doctorId?: number; patientId?: number; staffName?: string };
 }
 
 /**
- * Demo accounts for AbhiShree Hospital. Each explorer account maps to a role
- * and (where relevant) a real record in the database — e.g. the demo Doctor
- * is linked to an actual doctor row, the demo Patient to an actual patient row.
- * Passwords are display hints; any password works in demo mode, but Supabase
- * auth users are also seeded so real auth sessions function.
+ * Known default staff accounts for AbhiShree Hospital.
+ * Role mappings and profiles are verified via Supabase Authentication.
  */
 export const DEMO_USERS: DemoUser[] = [
-  { name: 'Aarav Sharma', email: 'admin@abhishree.hospital', role: 'Admin', password: 'Admin@AbhiShree2026!' },
-  { name: 'Dr. Meera Nair', email: 'doctor@abhishree.hospital', role: 'Doctor', password: 'Doctor@AbhiShree2026!', link: { doctorId: 1 } },
-  { name: 'Sister Lakshmi Rao', email: 'nurse@abhishree.hospital', role: 'Nurse', password: 'Nurse@AbhiShree2026!' },
-  { name: 'Rohan Verma', email: 'reception@abhishree.hospital', role: 'Receptionist', password: 'Reception@AbhiShree2026!' },
-  { name: 'Kavya Iyer', email: 'pharmacy@abhishree.hospital', role: 'Pharmacist', password: 'Pharma@AbhiShree2026!' },
-  { name: 'Arjun Patel', email: 'lab@abhishree.hospital', role: 'Lab Technician', password: 'LabTech@AbhiShree2026!' },
-  { name: 'Neha Gupta', email: 'accounts@abhishree.hospital', role: 'Accountant', password: 'Accounts@AbhiShree2026!' },
-  { name: 'Vikram Malhotra', email: 'patient@abhishree.hospital', role: 'Patient', password: 'Patient@AbhiShree2026!', link: { patientId: 3 } },
+  { name: 'Aarav Sharma', email: 'admin@abhishree.hospital', role: 'Admin' },
+  { name: 'Dr. Meera Nair', email: 'doctor@abhishree.hospital', role: 'Doctor', link: { doctorId: 1 } },
+  { name: 'Sister Lakshmi Rao', email: 'nurse@abhishree.hospital', role: 'Nurse' },
+  { name: 'Rohan Verma', email: 'reception@abhishree.hospital', role: 'Receptionist' },
+  { name: 'Kavya Iyer', email: 'pharmacy@abhishree.hospital', role: 'Pharmacist' },
+  { name: 'Arjun Patel', email: 'lab@abhishree.hospital', role: 'Lab Technician' },
+  { name: 'Neha Gupta', email: 'accounts@abhishree.hospital', role: 'Accountant' },
+  { name: 'Vikram Malhotra', email: 'patient@abhishree.hospital', role: 'Patient', link: { patientId: 3 } },
 ];
 
 export const ROLE_TAGLINES: Record<Role, string> = {
