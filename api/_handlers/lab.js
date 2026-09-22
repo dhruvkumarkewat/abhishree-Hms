@@ -19,21 +19,42 @@ function mapLab(r) {
   };
 }
 
+const ALLOWED_LAB_COLS = new Set([
+  'patient_id',
+  'test_name',
+  'category',
+  'priority',
+  'status',
+  'results',
+  'report_text',
+  'ordered_date',
+  'completed_date',
+  'ordered_by',
+  'conducted_by',
+  'notes',
+]);
+
 function sanitizeLab(body) {
-  const p = { ...body };
-  delete p.patient;
-  if (p.result !== undefined && !p.report_text) {
-    p.report_text = p.result;
+  const raw = { ...body };
+  if (raw.doctor_name && !raw.ordered_by) {
+    raw.ordered_by = raw.doctor_name;
   }
-  if (p.result_date !== undefined && !p.completed_date) {
-    p.completed_date = p.result_date;
+  if (raw.result !== undefined && !raw.report_text) {
+    raw.report_text = raw.result;
   }
-  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
-    p.patient_id = Number(p.patient_id);
+  if (raw.result_date !== undefined && !raw.completed_date) {
+    raw.completed_date = raw.result_date;
   }
-  delete p.result;
-  delete p.result_date;
-  return p;
+  if (raw.patient_id !== undefined && raw.patient_id !== null && raw.patient_id !== '') {
+    raw.patient_id = Number(raw.patient_id);
+  }
+  const clean = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (ALLOWED_LAB_COLS.has(k)) {
+      clean[k] = v;
+    }
+  }
+  return clean;
 }
 
 export default async function handler(req, res) {

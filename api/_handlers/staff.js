@@ -18,7 +18,12 @@ export default async function handler(req, res) {
 
     // 2. CREATE new staff + Auth credentials
     if (req.method === 'POST') {
-      const { password, ...staffData } = req.body;
+      const { password, ...rawStaff } = req.body;
+      const staffData = {};
+      const ALLOWED_STAFF_COLS = ['name', 'role', 'department', 'phone', 'email', 'shift', 'status'];
+      for (const k of ALLOWED_STAFF_COLS) {
+        if (rawStaff[k] !== undefined) staffData[k] = rawStaff[k];
+      }
       const { data, error } = await supabase.from('staff').insert(staffData).select().single();
       if (error) throw error;
 
@@ -45,7 +50,12 @@ export default async function handler(req, res) {
 
     // 3. UPDATE staff details + Edit Email & Password in Supabase Auth
     if (req.method === 'PUT') {
-      const { id, password, ...payload } = req.body;
+      const { id, password, ...rawPayload } = req.body;
+      const payload = {};
+      const ALLOWED_STAFF_COLS = ['name', 'role', 'department', 'phone', 'email', 'shift', 'status'];
+      for (const k of ALLOWED_STAFF_COLS) {
+        if (rawPayload[k] !== undefined) payload[k] = rawPayload[k];
+      }
 
       // Find current staff record to check previous email
       let oldEmail = null;

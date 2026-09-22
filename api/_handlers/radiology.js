@@ -19,21 +19,46 @@ function mapRadiology(r) {
   };
 }
 
+const ALLOWED_RADIOLOGY_COLS = new Set([
+  'patient_id',
+  'modality',
+  'body_part',
+  'priority',
+  'status',
+  'findings',
+  'impression',
+  'image_url',
+  'requested_date',
+  'reported_date',
+  'requested_by',
+  'radiologist',
+  'notes',
+]);
+
 function sanitizeRadiology(body) {
-  const p = { ...body };
-  delete p.patient;
-  if (p.report !== undefined && !p.findings) {
-    p.findings = p.report;
+  const raw = { ...body };
+  if (raw.doctor_name && !raw.requested_by) {
+    raw.requested_by = raw.doctor_name;
   }
-  if (p.report_date !== undefined && !p.reported_date) {
-    p.reported_date = p.report_date;
+  if (raw.scan_type && !raw.body_part && !raw.notes) {
+    raw.notes = raw.scan_type;
   }
-  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
-    p.patient_id = Number(p.patient_id);
+  if (raw.report !== undefined && !raw.findings) {
+    raw.findings = raw.report;
   }
-  delete p.report;
-  delete p.report_date;
-  return p;
+  if (raw.report_date !== undefined && !raw.reported_date) {
+    raw.reported_date = raw.report_date;
+  }
+  if (raw.patient_id !== undefined && raw.patient_id !== null && raw.patient_id !== '') {
+    raw.patient_id = Number(raw.patient_id);
+  }
+  const clean = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (ALLOWED_RADIOLOGY_COLS.has(k)) {
+      clean[k] = v;
+    }
+  }
+  return clean;
 }
 
 export default async function handler(req, res) {

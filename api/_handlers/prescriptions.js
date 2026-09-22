@@ -10,6 +10,50 @@ async function enrich(rows) {
   return rows.map((r) => ({ ...r, patient: map[r.patient_id] || null }));
 }
 
+const ALLOWED_PRESCRIPTION_COLS = new Set([
+  'patient_id',
+  'doctor_id',
+  'doctor_name',
+  'diagnosis',
+  'items',
+  'instructions',
+  'status',
+  'prescribed_date',
+  'dispensed_at',
+]);
+
+function sanitizePrescription(body) {
+  const raw = { ...body };
+  if (raw.medicines && !raw.items) {
+    raw.items = raw.medicines;
+  }
+  if (raw.notes && !raw.instructions) {
+    raw.instructions = raw.notes;
+  }
+  if (raw.dispensed_date && !raw.dispensed_at) {
+    raw.dispensed_at = raw.dispensed_date;
+  }
+  if (!raw.prescribed_date) {
+    raw.prescribed_date = new Date().toISOString().split('T')[0];
+  }
+  const clean = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (ALLOWED_PRESCRIPTION_COLS.has(k)) {
+      clean[k] = v;
+    }
+  }
+  if (clean.patient_id !== undefined && clean.patient_id !== null && clean.patient_id !== '') {
+    clean.patient_id = Number(clean.patient_id);
+  }
+  if (clean.doctor_id !== undefined && clean.doctor_id !== null && clean.doctor_id !== '') {
+    clean.doctor_id = Number(clean.doctor_id);
+  }
+  if (!clean.items || !Array.isArray(clean.items)) {
+    clean.items = [];
+  }
+  return clean;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -25,34 +69,16 @@ export default async function handler(req, res) {
       return res.status(200).json(await enrich(data));
     }
     if (req.method === 'POST') {
-      const payload = { ...req.body };
+      const payload = sanitizePrescription(req.body);
       delete payload.id;
-      delete payload.patient;
-      delete payload.doctor;
-      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
-        payload.patient_id = Number(payload.patient_id);
-      }
-      if (payload.doctor_id !== undefined && payload.doctor_id !== null && payload.doctor_id !== '') {
-        payload.doctor_id = Number(payload.doctor_id);
-      }
-      if (!payload.items || !Array.isArray(payload.items)) {
-        payload.items = [];
-      }
       const { data, error } = await supabase.from('prescriptions').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
       return res.status(201).json(one);
     }
     if (req.method === 'PUT') {
-      const { id, created_at, ...payload } = req.body;
-      delete payload.patient;
-      delete payload.doctor;
-      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
-        payload.patient_id = Number(payload.patient_id);
-      }
-      if (payload.doctor_id !== undefined && payload.doctor_id !== null && payload.doctor_id !== '') {
-        payload.doctor_id = Number(payload.doctor_id);
-      }
+      const { id, created_at, ...raw } = req.body;
+      const payload = sanitizePrescription(raw);
       const { data, error } = await supabase.from('prescriptions').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);

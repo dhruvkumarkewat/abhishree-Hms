@@ -10,26 +10,48 @@ async function enrich(rows) {
   return rows.map((r) => ({ ...r, patient: map[r.patient_id] || null }));
 }
 
+const ALLOWED_INVOICE_COLS = new Set([
+  'invoice_number',
+  'patient_id',
+  'total',
+  'paid',
+  'balance',
+  'status',
+  'payment_method',
+  'items',
+  'invoice_date',
+]);
+
 function sanitizeInvoice(body) {
-  const p = { ...body };
-  delete p.patient;
-  delete p.subtotal;
-  delete p.discount;
-  delete p.tax;
-  delete p.created_by;
-  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
-    p.patient_id = Number(p.patient_id);
+  const raw = { ...body };
+  if (raw.total_amount !== undefined && raw.total === undefined) {
+    raw.total = raw.total_amount;
   }
-  if (p.total !== undefined && p.total !== null && p.total !== '') {
-    p.total = Number(p.total);
+  if (raw.paid_amount !== undefined && raw.paid === undefined) {
+    raw.paid = raw.paid_amount;
   }
-  if (p.paid !== undefined && p.paid !== null && p.paid !== '') {
-    p.paid = Number(p.paid);
+  if (raw.balance === undefined && raw.total !== undefined) {
+    raw.balance = Math.max(0, Number(raw.total || 0) - Number(raw.paid || 0));
   }
-  if (p.balance !== undefined && p.balance !== null && p.balance !== '') {
-    p.balance = Number(p.balance);
+  const clean = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (ALLOWED_INVOICE_COLS.has(k)) {
+      clean[k] = v;
+    }
   }
-  return p;
+  if (clean.patient_id !== undefined && clean.patient_id !== null && clean.patient_id !== '') {
+    clean.patient_id = Number(clean.patient_id);
+  }
+  if (clean.total !== undefined && clean.total !== null && clean.total !== '') {
+    clean.total = Number(clean.total);
+  }
+  if (clean.paid !== undefined && clean.paid !== null && clean.paid !== '') {
+    clean.paid = Number(clean.paid);
+  }
+  if (clean.balance !== undefined && clean.balance !== null && clean.balance !== '') {
+    clean.balance = Number(clean.balance);
+  }
+  return clean;
 }
 
 export default async function handler(req, res) {

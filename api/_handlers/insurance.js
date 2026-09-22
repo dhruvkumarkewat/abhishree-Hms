@@ -10,6 +10,47 @@ async function enrich(rows) {
   return rows.map((r) => ({ ...r, patient: map[r.patient_id] || null }));
 }
 
+const ALLOWED_INSURANCE_COLS = new Set([
+  'patient_id',
+  'provider',
+  'policy_number',
+  'claim_amount',
+  'approved_amount',
+  'status',
+  'filed_date',
+  'filed_by',
+  'notes',
+]);
+
+function sanitizeInsurance(body) {
+  const raw = { ...body };
+  if (raw.provider_name && !raw.provider) {
+    raw.provider = raw.provider_name;
+  }
+  if (raw.claim_date && !raw.filed_date) {
+    raw.filed_date = raw.claim_date;
+  }
+  if (!raw.filed_date) {
+    raw.filed_date = new Date().toISOString().slice(0, 10);
+  }
+  const clean = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (ALLOWED_INSURANCE_COLS.has(k)) {
+      clean[k] = v;
+    }
+  }
+  if (clean.patient_id !== undefined && clean.patient_id !== null && clean.patient_id !== '') {
+    clean.patient_id = Number(clean.patient_id);
+  }
+  if (clean.claim_amount !== undefined && clean.claim_amount !== null && clean.claim_amount !== '') {
+    clean.claim_amount = Number(clean.claim_amount);
+  }
+  if (clean.approved_amount !== undefined && clean.approved_amount !== null && clean.approved_amount !== '') {
+    clean.approved_amount = Number(clean.approved_amount);
+  }
+  return clean;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -25,35 +66,16 @@ export default async function handler(req, res) {
       return res.status(200).json(await enrich(data));
     }
     if (req.method === 'POST') {
-      const payload = { ...req.body };
+      const payload = sanitizeInsurance(req.body);
       delete payload.id;
-      delete payload.patient;
-      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
-        payload.patient_id = Number(payload.patient_id);
-      }
-      if (payload.claim_amount !== undefined && payload.claim_amount !== null && payload.claim_amount !== '') {
-        payload.claim_amount = Number(payload.claim_amount);
-      }
-      if (payload.approved_amount !== undefined && payload.approved_amount !== null && payload.approved_amount !== '') {
-        payload.approved_amount = Number(payload.approved_amount);
-      }
       const { data, error } = await supabase.from('insurance_claims').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
       return res.status(201).json(one);
     }
     if (req.method === 'PUT') {
-      const { id, created_at, ...payload } = req.body;
-      delete payload.patient;
-      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
-        payload.patient_id = Number(payload.patient_id);
-      }
-      if (payload.claim_amount !== undefined && payload.claim_amount !== null && payload.claim_amount !== '') {
-        payload.claim_amount = Number(payload.claim_amount);
-      }
-      if (payload.approved_amount !== undefined && payload.approved_amount !== null && payload.approved_amount !== '') {
-        payload.approved_amount = Number(payload.approved_amount);
-      }
+      const { id, created_at, ...raw } = req.body;
+      const payload = sanitizeInsurance(raw);
       const { data, error } = await supabase.from('insurance_claims').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);

@@ -10,28 +10,54 @@ function mapVitals(r) {
   };
 }
 
+const ALLOWED_VITALS_COLS = new Set([
+  'patient_id',
+  'temperature',
+  'blood_pressure',
+  'heart_rate',
+  'respiratory_rate',
+  'spo2',
+  'weight',
+  'recorded_by',
+  'recorded_at',
+]);
+
 function sanitizeVitals(body) {
-  const p = { ...body };
-  if (p.bp && !p.blood_pressure) {
-    p.blood_pressure = String(p.bp);
+  const raw = { ...body };
+  if (raw.bp && !raw.blood_pressure) {
+    raw.blood_pressure = String(raw.bp);
   }
-  if (p.pulse && !p.heart_rate) {
-    p.heart_rate = Number(p.pulse) || null;
+  if (raw.pulse && !raw.heart_rate) {
+    raw.heart_rate = Number(raw.pulse) || null;
   }
-  if (p.temp && !p.temperature) {
-    p.temperature = String(p.temp);
+  if (raw.temp && !raw.temperature) {
+    raw.temperature = String(raw.temp);
   }
-  if (p.spo2 !== undefined && p.spo2 !== null && p.spo2 !== '') {
-    p.spo2 = Number(p.spo2) || null;
+  if (raw.oxygen_saturation !== undefined && raw.spo2 === undefined) {
+    raw.spo2 = Number(raw.oxygen_saturation) || null;
   }
-  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
-    p.patient_id = Number(p.patient_id);
+  if (!raw.recorded_at) {
+    raw.recorded_at = new Date().toISOString();
   }
-  delete p.bp;
-  delete p.pulse;
-  delete p.temp;
-  delete p.note;
-  return p;
+  const clean = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (ALLOWED_VITALS_COLS.has(k)) {
+      clean[k] = v;
+    }
+  }
+  if (clean.patient_id !== undefined && clean.patient_id !== null && clean.patient_id !== '') {
+    clean.patient_id = Number(clean.patient_id);
+  }
+  if (clean.spo2 !== undefined && clean.spo2 !== null && clean.spo2 !== '') {
+    clean.spo2 = Number(clean.spo2) || null;
+  }
+  if (clean.heart_rate !== undefined && clean.heart_rate !== null && clean.heart_rate !== '') {
+    clean.heart_rate = Number(clean.heart_rate) || null;
+  }
+  if (clean.respiratory_rate !== undefined && clean.respiratory_rate !== null && clean.respiratory_rate !== '') {
+    clean.respiratory_rate = Number(clean.respiratory_rate) || null;
+  }
+  return clean;
 }
 
 export default async function handler(req, res) {
