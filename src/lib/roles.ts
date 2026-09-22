@@ -1,0 +1,56 @@
+export type Role = 'Admin' | 'Doctor' | 'Nurse' | 'Receptionist' | 'Pharmacist' | 'Lab Technician' | 'Accountant' | 'Patient';
+
+export const ROLES: Role[] = ['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Pharmacist', 'Lab Technician', 'Accountant', 'Patient'];
+
+export interface DemoUser {
+  name: string;
+  email: string;
+  role: Role;
+  password: string;
+  link?: { doctorId?: number; patientId?: number; staffName?: string };
+}
+
+/**
+ * Demo accounts for AbhiShree Hospital. Each explorer account maps to a role
+ * and (where relevant) a real record in the database — e.g. the demo Doctor
+ * is linked to an actual doctor row, the demo Patient to an actual patient row.
+ * Passwords are display hints; any password works in demo mode, but Supabase
+ * auth users are also seeded so real auth sessions function.
+ */
+export const DEMO_USERS: DemoUser[] = [
+  { name: 'Aarav Sharma', email: 'admin@abhishree.hospital', role: 'Admin', password: 'admin123' },
+  { name: 'Dr. Meera Nair', email: 'doctor@abhishree.hospital', role: 'Doctor', password: 'doctor123', link: { doctorId: 1 } },
+  { name: 'Sister Lakshmi Rao', email: 'nurse@abhishree.hospital', role: 'Nurse', password: 'nurse123' },
+  { name: 'Rohan Verma', email: 'reception@abhishree.hospital', role: 'Receptionist', password: 'frontdesk123' },
+  { name: 'Kavya Iyer', email: 'pharmacy@abhishree.hospital', role: 'Pharmacist', password: 'pharma123' },
+  { name: 'Arjun Patel', email: 'lab@abhishree.hospital', role: 'Lab Technician', password: 'lab12345' },
+  { name: 'Neha Gupta', email: 'accounts@abhishree.hospital', role: 'Accountant', password: 'accounts123' },
+  { name: 'Vikram Malhotra', email: 'patient@abhishree.hospital', role: 'Patient', password: 'patient123', link: { patientId: 3 } },
+];
+
+export const ROLE_TAGLINES: Record<Role, string> = {
+  Admin: 'Hospital operations & oversight',
+  Doctor: 'Consultations & clinical care',
+  Nurse: 'Wards, vitals & patient monitoring',
+  Receptionist: 'Front desk & patient flow',
+  Pharmacist: 'Prescriptions & dispensary',
+  'Lab Technician': 'Tests, samples & reports',
+  Accountant: 'Billing, payments & claims',
+  Patient: 'My health & appointments',
+};
+
+export function userForEmail(email: string): DemoUser | null {
+  const e = email.trim().toLowerCase();
+  return DEMO_USERS.find((u) => u.email.toLowerCase() === e) || null;
+}
+
+export interface SessionUser {
+  name: string;
+  email: string;
+  role: Role;
+  link?: { doctorId?: number; patientId?: number };
+}
+
+export function sessionFromDemo(d: DemoUser): SessionUser {
+  return { name: d.name, email: d.email, role: d.role, link: d.link ? { doctorId: d.link.doctorId, patientId: d.link.patientId } : undefined };
+}
