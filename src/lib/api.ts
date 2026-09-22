@@ -1,7 +1,9 @@
+import { SUPABASE_URL } from './supabase';
+
 export async function api<T = any>(path: string, options?: RequestInit & { json?: any }): Promise<T> {
   const { json, ...rest } = options || {};
   try {
-    if (import.meta.env.VITE_SUPABASE_URL?.includes('abcdefghijklmnopqr') && path.startsWith('/api/')) throw new Error('Dummy mode active');
+    if (SUPABASE_URL.includes('abcdefghijklmnopqr') && path.startsWith('/api/')) throw new Error('Dummy mode active');
     const res = await fetch(path, {
       headers: { 'Content-Type': 'application/json' },
       ...rest,
