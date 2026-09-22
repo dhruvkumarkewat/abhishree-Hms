@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Stethoscope } from 'lucide-react';
-import { get, post } from '../lib/api';
+import { get, post, put } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Avatar } from '../components/ui';
@@ -38,19 +38,27 @@ export default function Doctors() {
 
   const add = async () => {
     if (!form.name.trim()) return toast({ kind: 'error', title: 'Doctor name is required' });
-    await post('/api/doctors', { ...form, consultation_fee: Number(form.consultation_fee) || 0, status: 'Available' });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Added doctor ${form.name} (${form.specialty})`, module: 'Staff' });
-    toast({ kind: 'success', title: 'Doctor added', desc: form.name });
-    setShowNew(false);
-    setForm({ name: '', specialty: 'General Medicine', department: 'General Medicine', qualification: '', phone: '', email: '', consultation_fee: '500', schedule: 'Mon–Sat · 10:00–14:00' });
-    load();
+    try {
+      await post('/api/doctors', { ...form, consultation_fee: Number(form.consultation_fee) || 0, status: 'Available' });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Added doctor ${form.name} (${form.specialty})`, module: 'Staff' });
+      toast({ kind: 'success', title: 'Doctor added', desc: form.name });
+      setShowNew(false);
+      setForm({ name: '', specialty: 'General Medicine', department: 'General Medicine', qualification: '', phone: '', email: '', consultation_fee: '500', schedule: 'Mon–Sat · 10:00–14:00' });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to add doctor', desc: e.message });
+    }
   };
 
   const toggle = async (d: any) => {
     const next = d.status === 'Available' ? 'On Leave' : 'Available';
-    await fetch('/api/doctors', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: d.id, status: next }) });
-    toast({ kind: 'success', title: `${d.name} → ${next}` });
-    load();
+    try {
+      await put('/api/doctors', { id: d.id, status: next });
+      toast({ kind: 'success', title: `${d.name} → ${next}` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update doctor status', desc: e.message });
+    }
   };
 
   return (

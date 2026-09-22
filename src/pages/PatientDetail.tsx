@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Pencil, CalendarPlus, FlaskConical, Pill, Receipt, Phone, MapPin, Droplet, ShieldCheck, HeartPulse } from 'lucide-react';
-import { get, fmtDate, fmtTime, inr, logAudit } from '../lib/api';
+import { get, put, fmtDate, fmtTime, inr, logAudit } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Badge, Modal, Field, Empty, LoadError, Avatar } from '../components/ui';
@@ -58,7 +58,7 @@ export default function PatientDetail() {
     if (!form.name?.trim()) return toast({ kind: 'error', title: 'Name is required' });
     setSaving(true);
     try {
-      await fetch('/api/patients', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, id: p.id }) });
+      await put('/api/patients', { ...form, id: p.id });
       await logAudit({ user_name: user!.name, user_role: user!.role, action: `Updated patient record: ${form.name}`, module: 'Patients' });
       toast({ kind: 'success', title: 'Patient record updated' });
       setEditOpen(false);

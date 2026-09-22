@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarPlus, Pill, FlaskConical, Receipt, FileText, Stethoscope } from 'lucide-react';
-import { get, post, fmtDate, fmtTime, inr, todayISO } from '../lib/api';
+import { get, post, put, fmtDate, fmtTime, inr, todayISO } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead } from '../components/ui';
@@ -13,11 +13,12 @@ function useMyPatient() {
   useEffect(() => {
     (async () => {
       setReady(false);
-      if (user?.link?.patientId) { setPid(user.link.patientId); setReady(true); return; }
       try {
-        const mine = await get(`/api/patients?user_email=${encodeURIComponent(user?.email || '')}`);
-        setPid(Array.isArray(mine) && mine[0] ? mine[0].id : null);
-      } catch { setPid(null); }
+        if (user?.link?.patientId) { setPid(Number(user.link.patientId)); setReady(true); return; }
+        const plist = await get('/api/patients');
+        const match = (Array.isArray(plist) ? plist : []).find((p: any) => p.email && user?.email && p.email.toLowerCase() === user.email.toLowerCase());
+        if (match) setPid(match.id);
+      } catch { /* ignore */ }
       setReady(true);
     })();
   }, [user]);
@@ -40,26 +41,35 @@ export function MyAppointments() {
     try {
       const [a, d] = await Promise.all([get(`/api/appointments?patient_id=${pid}`), get('/api/doctors')]);
       setRows(Array.isArray(a) ? a : []);
-      setDoctors((Array.isArray(d) ? d : []).filter((x: any) => x.status === 'Available'));
+      setDoctors(Array.isArray(d) ? d : []);
     } catch { /* ignore */ }
     setLoading(false);
   };
-  useEffect(() => { if (ready) load(); }, [ready, pid]);
+  useEffect(() => { if (ready) load(); }, [pid, ready]);
 
   const book = async () => {
+    if (!pid) return toast({ kind: 'error', title: 'Patient record not linked' });
     if (!form.doctor_id) return toast({ kind: 'error', title: 'Choose a doctor' });
     const doc = doctors.find((d) => String(d.id) === String(form.doctor_id));
-    await post('/api/appointments', { patient_id: pid, doctor_id: Number(form.doctor_id), department: doc?.department || doc?.specialty, date: form.date, time: form.time, appointment_type: 'New visit', reason: form.reason || null, status: 'Scheduled', created_by: user!.name });
-    toast({ kind: 'success', title: 'Appointment requested', desc: `${doc?.name} · ${fmtDate(form.date)}` });
-    setShowNew(false);
-    load();
+    try {
+      await post('/api/appointments', { patient_id: pid, doctor_id: Number(form.doctor_id), department: doc?.department || doc?.specialty, date: form.date, time: form.time, appointment_type: 'New visit', reason: form.reason || null, status: 'Scheduled', created_by: user!.name });
+      toast({ kind: 'success', title: 'Appointment requested', desc: `${doc?.name} · ${fmtDate(form.date)}` });
+      setShowNew(false);
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to book appointment', desc: e.message });
+    }
   };
 
   const cancel = async (a: any) => {
     if (!confirm('Cancel this appointment?')) return;
-    await fetch('/api/appointments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, status: 'Cancelled' }) });
-    toast({ kind: 'success', title: 'Appointment cancelled' });
-    load();
+    try {
+      await put('/api/appointments', { id: a.id, status: 'Cancelled' });
+      toast({ kind: 'success', title: 'Appointment cancelled' });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to cancel appointment', desc: e.message });
+    }
   };
 
   return (

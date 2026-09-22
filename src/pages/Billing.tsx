@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, Receipt, Trash2 } from 'lucide-react';
-import { get, post, fmtDate, inr, todayISO } from '../lib/api';
+import { get, post, put, fmtDate, inr, todayISO } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Stat } from '../components/ui';
@@ -23,8 +23,9 @@ export default function Billing() {
   const [payAmt, setPayAmt] = useState('');
   const [payMethod, setPayMethod] = useState('Cash');
   const [refundFor, setRefundFor] = useState<any>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [form, setForm] = useState<any>({ patient_id: '', items: [{ category: 'Consultation', description: 'General consultation', amount: '500' }], discount: '0', tax: '0' });
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ patient_id: params.get('patient') || '', items: [{ category: 'Consultation', description: 'General consultation', amount: '500' } as any], discount: '0', tax: '0' });
 
   const canBill = ['Admin', 'Accountant', 'Receptionist'].includes(user?.role || '');
 
@@ -40,13 +41,14 @@ export default function Billing() {
   useEffect(() => { load(); }, []);
   useEffect(() => { if (params.get('new') === '1' && canBill) setShowNew(true); }, []);
 
-  const shown = useMemo(() => rows.filter((r) => !statusF || r.status === statusF), [rows, statusF]);
+  const shown = rows.filter((r) => !statusF || r.status === statusF);
   const collected = rows.reduce((s, r) => s + Number(r.paid || 0), 0);
   const outstanding = rows.reduce((s, r) => s + Number(r.balance || 0), 0);
 
-  const formTotal = form.items.reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0) - Number(form.discount || 0) + Number(form.tax || 0);
+  const formSubtotal = form.items.reduce((s: number, it: any) => s + (Number(it.amount) || 0), 0);
+  const formTotal = formSubtotal - (Number(form.discount) || 0) + (Number(form.tax) || 0);
 
-  const addRow = () => setForm({ ...form, items: [...form.items, { category: 'Other', description: '', amount: '' }] });
+  const addRow = () => setForm({ ...form, items: [...form.items, { category: 'Procedure', description: '', amount: '' }] });
   const setRow = (i: number, patch: any) => {
     const items = form.items.map((it: any, j: number) => (j === i ? { ...it, ...patch } : it));
     setForm({ ...form, items });
@@ -86,13 +88,17 @@ export default function Billing() {
     if (amt > Number(payFor.balance) + 1) return toast({ kind: 'error', title: 'Amount exceeds balance' });
     const paid = Number(payFor.paid) + amt;
     const balance = Math.max(0, Number(payFor.total) - paid);
-    await fetch('/api/invoices', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: payFor.id, paid, balance, status: balance === 0 ? 'Paid' : 'Partial' }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Recorded payment of ${inr(amt)} on ${payFor.invoice_number} via ${payMethod}`, module: 'Billing' });
-    toast({ kind: 'success', title: 'Payment recorded', desc: `${inr(amt)} on ${payFor.invoice_number} via ${payMethod}` });
-    setPayFor(null);
-    setPayAmt('');
-    setPayMethod('Cash');
-    load();
+    try {
+      await put('/api/invoices', { id: payFor.id, paid, balance, status: balance === 0 ? 'Paid' : 'Partial' });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Recorded payment of ${inr(amt)} on ${payFor.invoice_number} via ${payMethod}`, module: 'Billing' });
+      toast({ kind: 'success', title: 'Payment recorded', desc: `${inr(amt)} on ${payFor.invoice_number} via ${payMethod}` });
+      setPayFor(null);
+      setPayAmt('');
+      setPayMethod('Cash');
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to record payment', desc: e.message });
+    }
   };
 
   return (
@@ -201,18 +207,32 @@ export default function Billing() {
       )}
 
       {refundFor && (
-        <Modal title={`Request Refund`} subtitle={`${refundFor.invoice_number} · Paid: ${inr(refundFor.paid)}`} onClose={() => setRefundFor(null)}>
-          <Field label="Reason for refund">
-            <input className="input" placeholder="e.g. Overcharged, cancelled procedure" />
+        <Modal title={`Request Refund`} subtitle={`${refundFor.invoice_number} · Paid: ${inr(refundFor.paid)}`} onClose={() => { setRefundFor(null); setRefundReason(''); }}>
+          <Field label="Reason for refund" required>
+            <input className="input" placeholder="e.g. Overcharged, cancelled procedure" value={refundReason} onChange={(e) => setRefundReason(e.target.value)} />
           </Field>
           <div className="flex items-center gap-2 text-[13px] opacity-60 mt-4 mb-2">
-            <Receipt size={14} /> Refund requests are sent to Admin for approval.
+            <Receipt size={14} /> Refund requests are saved and sent to Admin for approval.
           </div>
           <div className="flex justify-end gap-2 mt-6">
-            <button className="btn btn-ghost" onClick={() => setRefundFor(null)}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => {
-              toast({ kind: 'success', title: 'Refund Requested', desc: 'Sent to admin for approval.' });
-              setRefundFor(null);
+            <button className="btn btn-ghost" onClick={() => { setRefundFor(null); setRefundReason(''); }}>Cancel</button>
+            <button className="btn btn-primary" onClick={async () => {
+              if (!refundReason.trim()) return toast({ kind: 'error', title: 'Please provide a reason' });
+              try {
+                await post('/api/approvals', {
+                  type: 'Refund',
+                  requested_by: user!.name,
+                  reason: `${refundReason.trim()} (Invoice: ${refundFor.invoice_number})`,
+                  reference_id: refundFor.invoice_number,
+                  amount: Number(refundFor.paid) || 0,
+                  status: 'Pending',
+                });
+                toast({ kind: 'success', title: 'Refund Requested', desc: 'Sent to admin for approval.' });
+                setRefundFor(null);
+                setRefundReason('');
+              } catch (e: any) {
+                toast({ kind: 'error', title: 'Failed to request refund', desc: e.message });
+              }
             }}>Submit Request</button>
           </div>
         </Modal>

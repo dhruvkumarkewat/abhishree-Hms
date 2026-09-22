@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, FlaskConical } from 'lucide-react';
-import { get, post, fmtDate, todayISO } from '../lib/api';
+import { get, post, put, fmtDate, todayISO } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead } from '../components/ui';
@@ -22,10 +22,10 @@ export default function Lab() {
   const [showNew, setShowNew] = useState(false);
   const [resultFor, setResultFor] = useState<any>(null);
   const [result, setResult] = useState('');
-  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ patient_id: params.get('patient') || '', test_name: TESTS[0], priority: 'Routine', notes: '' });
+  const [saving, setSaving] = useState(false);
 
-  const canOrder = ['Admin', 'Doctor', 'Receptionist'].includes(user?.role || '');
+  const canOrder = ['Admin', 'Doctor', 'Nurse'].includes(user?.role || '');
   const canProcess = ['Admin', 'Lab Technician', 'Doctor'].includes(user?.role || '');
 
   const load = async () => {
@@ -47,20 +47,28 @@ export default function Lab() {
     if (i < 0 || i >= FLOW.length - 1) return;
     const next = FLOW[i + 1];
     if (next === 'Result Entry') { setResultFor(t); setResult(t.result || ''); return; }
-    await fetch('/api/lab', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: t.id, status: next }) });
-    toast({ kind: 'success', title: `${t.test_name} → ${next}` });
-    load();
+    try {
+      await put('/api/lab', { id: t.id, status: next });
+      toast({ kind: 'success', title: `${t.test_name} → ${next}` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update test status', desc: e.message });
+    }
   };
 
   const saveResult = async (verify: boolean) => {
     if (!result.trim()) return toast({ kind: 'error', title: 'Enter the result first' });
-    await fetch('/api/lab', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: resultFor.id, result: result.trim(), result_date: todayISO(), status: verify ? 'Verified' : 'Result Entry' }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `${verify ? 'Verified' : 'Entered'} result for ${resultFor.test_name} (${resultFor.patient?.name})`, module: 'Laboratory' });
-    if (verify) await post('/api/notifications', { type: 'Lab result', title: 'Lab report ready', message: `${resultFor.test_name} for ${resultFor.patient?.name} is verified.`, target_role: 'Doctor' });
-    toast({ kind: 'success', title: verify ? 'Report verified & released' : 'Result saved' });
-    setResultFor(null);
-    setResult('');
-    load();
+    try {
+      await put('/api/lab', { id: resultFor.id, result: result.trim(), result_date: todayISO(), status: verify ? 'Verified' : 'Result Entry' });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `${verify ? 'Verified' : 'Entered'} result for ${resultFor.test_name} (${resultFor.patient?.name})`, module: 'Laboratory' });
+      if (verify) await post('/api/notifications', { type: 'Lab result', title: 'Lab report ready', message: `${resultFor.test_name} for ${resultFor.patient?.name} is verified.`, target_role: 'Doctor' });
+      toast({ kind: 'success', title: verify ? 'Report verified & released' : 'Result saved' });
+      setResultFor(null);
+      setResult('');
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to save result', desc: e.message });
+    }
   };
 
   const order = async () => {

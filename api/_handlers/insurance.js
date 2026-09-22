@@ -25,14 +25,35 @@ export default async function handler(req, res) {
       return res.status(200).json(await enrich(data));
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('insurance_claims').insert(req.body).select().single();
+      const payload = { ...req.body };
+      delete payload.id;
+      delete payload.patient;
+      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
+        payload.patient_id = Number(payload.patient_id);
+      }
+      if (payload.claim_amount !== undefined && payload.claim_amount !== null && payload.claim_amount !== '') {
+        payload.claim_amount = Number(payload.claim_amount);
+      }
+      if (payload.approved_amount !== undefined && payload.approved_amount !== null && payload.approved_amount !== '') {
+        payload.approved_amount = Number(payload.approved_amount);
+      }
+      const { data, error } = await supabase.from('insurance_claims').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
       return res.status(201).json(one);
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
+      const { id, created_at, ...payload } = req.body;
       delete payload.patient;
+      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
+        payload.patient_id = Number(payload.patient_id);
+      }
+      if (payload.claim_amount !== undefined && payload.claim_amount !== null && payload.claim_amount !== '') {
+        payload.claim_amount = Number(payload.claim_amount);
+      }
+      if (payload.approved_amount !== undefined && payload.approved_amount !== null && payload.approved_amount !== '') {
+        payload.approved_amount = Number(payload.approved_amount);
+      }
       const { data, error } = await supabase.from('insurance_claims').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);

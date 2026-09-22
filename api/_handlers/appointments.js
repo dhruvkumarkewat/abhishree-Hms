@@ -35,15 +35,31 @@ export default async function handler(req, res) {
       return res.status(200).json(await enrich(data));
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('appointments').insert(req.body).select().single();
+      const payload = { ...req.body };
+      delete payload.id;
+      delete payload.patient;
+      delete payload.doctor;
+      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
+        payload.patient_id = Number(payload.patient_id);
+      }
+      if (payload.doctor_id !== undefined && payload.doctor_id !== null && payload.doctor_id !== '') {
+        payload.doctor_id = Number(payload.doctor_id);
+      }
+      const { data, error } = await supabase.from('appointments').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
       return res.status(201).json(one);
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
+      const { id, created_at, ...payload } = req.body;
       delete payload.patient;
       delete payload.doctor;
+      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
+        payload.patient_id = Number(payload.patient_id);
+      }
+      if (payload.doctor_id !== undefined && payload.doctor_id !== null && payload.doctor_id !== '') {
+        payload.doctor_id = Number(payload.doctor_id);
+      }
       const { data, error } = await supabase.from('appointments').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);

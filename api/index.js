@@ -1,5 +1,6 @@
 import admissions from './_handlers/admissions.js';
 import appointments from './_handlers/appointments.js';
+import approvals from './_handlers/approvals.js';
 import audit from './_handlers/audit.js';
 import beds from './_handlers/beds.js';
 import dashboard from './_handlers/dashboard.js';
@@ -22,6 +23,7 @@ import checkEmail from './_handlers/check-email.js';
 const routes = {
   admissions,
   appointments,
+  approvals,
   audit,
   beds,
   dashboard,

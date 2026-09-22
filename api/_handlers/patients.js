@@ -17,12 +17,23 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('patients').insert(req.body).select().single();
+      const payload = { ...req.body };
+      delete payload.id;
+      if (!payload.patient_id || !String(payload.patient_id).trim()) {
+        payload.patient_id = `ASH-${Math.floor(10000 + Math.random() * 90000)}`;
+      }
+      if (payload.age !== undefined && payload.age !== null && payload.age !== '') {
+        payload.age = Number(payload.age);
+      }
+      const { data, error } = await supabase.from('patients').insert(payload).select().single();
       if (error) throw error;
       return res.status(201).json(data);
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
+      const { id, created_at, ...payload } = req.body;
+      if (payload.age !== undefined && payload.age !== null && payload.age !== '') {
+        payload.age = Number(payload.age);
+      }
       const { data, error } = await supabase.from('patients').update(payload).eq('id', id).select().single();
       if (error) throw error;
       return res.status(200).json(data);

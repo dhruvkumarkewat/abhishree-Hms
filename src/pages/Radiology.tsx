@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ScanLine } from 'lucide-react';
-import { get, post, fmtDate, todayISO } from '../lib/api';
+import { get, post, put, fmtDate, todayISO } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead } from '../components/ui';
@@ -41,29 +41,41 @@ export default function Radiology() {
     if (i < 0 || i >= FLOW.length - 1) return;
     const next = FLOW[i + 1];
     if (next === 'Reported') { setReportFor(r); setReport(r.report || ''); return; }
-    await fetch('/api/radiology', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, status: next }) });
-    toast({ kind: 'success', title: `${r.modality} → ${next}` });
-    load();
+    try {
+      await put('/api/radiology', { id: r.id, status: next });
+      toast({ kind: 'success', title: `${r.modality} → ${next}` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update radiology status', desc: e.message });
+    }
   };
 
   const saveReport = async () => {
     if (!report.trim()) return toast({ kind: 'error', title: 'Write the findings first' });
-    await fetch('/api/radiology', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: reportFor.id, report: report.trim(), report_date: todayISO(), status: 'Reported' }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Reported ${reportFor.modality} for ${reportFor.patient?.name}`, module: 'Radiology' });
-    await post('/api/notifications', { type: 'Lab result', title: 'Imaging report ready', message: `${reportFor.modality} for ${reportFor.patient?.name} is reported.`, target_role: 'Doctor' });
-    toast({ kind: 'success', title: 'Report released to doctor & patient' });
-    setReportFor(null);
-    setReport('');
-    load();
+    try {
+      await put('/api/radiology', { id: reportFor.id, report: report.trim(), report_date: todayISO(), status: 'Reported' });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Reported ${reportFor.modality} for ${reportFor.patient?.name}`, module: 'Radiology' });
+      await post('/api/notifications', { type: 'Lab result', title: 'Imaging report ready', message: `${reportFor.modality} for ${reportFor.patient?.name} is reported.`, target_role: 'Doctor' });
+      toast({ kind: 'success', title: 'Report released to doctor & patient' });
+      setReportFor(null);
+      setReport('');
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to save report', desc: e.message });
+    }
   };
 
   const order = async () => {
     if (!form.patient_id) return toast({ kind: 'error', title: 'Choose a patient' });
-    await post('/api/radiology', { patient_id: Number(form.patient_id), modality: form.modality, body_part: form.body_part || null, notes: form.notes || null, status: 'Requested', requested_date: todayISO(), requested_by: user!.name });
-    toast({ kind: 'success', title: 'Imaging requested' });
-    setShowNew(false);
-    setForm({ patient_id: '', modality: 'X-Ray', body_part: '', notes: '' });
-    load();
+    try {
+      await post('/api/radiology', { patient_id: Number(form.patient_id), modality: form.modality, body_part: form.body_part || null, notes: form.notes || null, status: 'Requested', requested_date: todayISO(), requested_by: user!.name });
+      toast({ kind: 'success', title: 'Imaging requested' });
+      setShowNew(false);
+      setForm({ patient_id: '', modality: 'X-Ray', body_part: '', notes: '' });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to request imaging', desc: e.message });
+    }
   };
 
   return (

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pill, Plus, Minus, AlertTriangle } from 'lucide-react';
-import { get, post, fmtDate, todayISO } from '../lib/api';
+import { get, post, put, fmtDate, todayISO } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Meter, AlertBanner } from '../components/ui';
@@ -37,33 +37,45 @@ export default function Pharmacy() {
   const stockShown = useMemo(() => meds.filter((m) => !q.trim() || m.name.toLowerCase().includes(q.trim().toLowerCase())), [meds, q]);
 
   const dispense = async (r: any) => {
-    // decrement stock for matched medicines
-    for (const it of (r.items || [])) {
-      const match = meds.find((m) => m.name.toLowerCase() === String(it.medicine || '').toLowerCase().split(' ')[0].toLowerCase() || m.name.toLowerCase().includes(String(it.medicine || '').toLowerCase().split(' ')[0]));
-      if (match) {
-        const qty = Math.max(1, parseInt(String(it.duration || '1')) || 1);
-        await fetch('/api/medicines', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: match.id, stock_quantity: Math.max(0, Number(match.stock_quantity) - qty) }) });
+    try {
+      // decrement stock for matched medicines
+      for (const it of (r.items || [])) {
+        const match = meds.find((m) => m.name.toLowerCase() === String(it.medicine || '').toLowerCase().split(' ')[0].toLowerCase() || m.name.toLowerCase().includes(String(it.medicine || '').toLowerCase().split(' ')[0]));
+        if (match) {
+          const qty = Math.max(1, parseInt(String(it.duration || '1')) || 1);
+          await put('/api/medicines', { id: match.id, stock_quantity: Math.max(0, Number(match.stock_quantity) - qty) });
+        }
       }
+      await put('/api/prescriptions', { id: r.id, status: 'Dispensed', dispensed_date: todayISO(), dispensed_by: user!.name });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Dispensed prescription #${r.id} for ${r.patient?.name}`, module: 'Pharmacy' });
+      toast({ kind: 'success', title: 'Prescription dispensed', desc: `${r.patient?.name} · stock updated` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Dispense failed', desc: e.message });
     }
-    await fetch('/api/prescriptions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, status: 'Dispensed', dispensed_date: todayISO(), dispensed_by: user!.name }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Dispensed prescription #${r.id} for ${r.patient?.name}`, module: 'Pharmacy' });
-    toast({ kind: 'success', title: 'Prescription dispensed', desc: `${r.patient?.name} · stock updated` });
-    load();
   };
 
   const adjust = async (m: any, delta: number) => {
-    await fetch('/api/medicines', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, stock_quantity: Math.max(0, Number(m.stock_quantity) + delta) }) });
-    toast({ kind: 'success', title: delta > 0 ? 'Stock added' : 'Stock reduced', desc: m.name });
-    load();
+    try {
+      await put('/api/medicines', { id: m.id, stock_quantity: Math.max(0, Number(m.stock_quantity) + delta) });
+      toast({ kind: 'success', title: delta > 0 ? 'Stock added' : 'Stock reduced', desc: m.name });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to adjust stock', desc: e.message });
+    }
   };
 
   const addMed = async () => {
     if (!medForm.name.trim()) return toast({ kind: 'error', title: 'Medicine name is required' });
-    await post('/api/medicines', { ...medForm, stock_quantity: Number(medForm.stock_quantity) || 0, reorder_level: Number(medForm.reorder_level) || 0, unit_price: Number(medForm.unit_price) || 0, expiry_date: medForm.expiry_date || null });
-    toast({ kind: 'success', title: 'Medicine added to inventory' });
-    setShowMed(false);
-    setMedForm({ name: '', strength: '', category: 'Tablet', stock_quantity: '', reorder_level: '50', unit_price: '', expiry_date: '', supplier: '' });
-    load();
+    try {
+      await post('/api/medicines', { ...medForm, stock_quantity: Number(medForm.stock_quantity) || 0, reorder_level: Number(medForm.reorder_level) || 0, unit_price: Number(medForm.unit_price) || 0, expiry_date: medForm.expiry_date || null });
+      toast({ kind: 'success', title: 'Medicine added to inventory' });
+      setShowMed(false);
+      setMedForm({ name: '', strength: '', category: 'Tablet', stock_quantity: '', reorder_level: '50', unit_price: '', expiry_date: '', supplier: '' });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to add medicine', desc: e.message });
+    }
   };
 
   return (

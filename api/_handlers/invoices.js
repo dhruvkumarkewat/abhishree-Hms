@@ -10,6 +10,28 @@ async function enrich(rows) {
   return rows.map((r) => ({ ...r, patient: map[r.patient_id] || null }));
 }
 
+function sanitizeInvoice(body) {
+  const p = { ...body };
+  delete p.patient;
+  delete p.subtotal;
+  delete p.discount;
+  delete p.tax;
+  delete p.created_by;
+  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
+    p.patient_id = Number(p.patient_id);
+  }
+  if (p.total !== undefined && p.total !== null && p.total !== '') {
+    p.total = Number(p.total);
+  }
+  if (p.paid !== undefined && p.paid !== null && p.paid !== '') {
+    p.paid = Number(p.paid);
+  }
+  if (p.balance !== undefined && p.balance !== null && p.balance !== '') {
+    p.balance = Number(p.balance);
+  }
+  return p;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -25,14 +47,19 @@ export default async function handler(req, res) {
       return res.status(200).json(await enrich(data));
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('invoices').insert(req.body).select().single();
+      const payload = sanitizeInvoice(req.body);
+      delete payload.id;
+      if (!payload.invoice_number || !String(payload.invoice_number).trim()) {
+        payload.invoice_number = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+      const { data, error } = await supabase.from('invoices').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
       return res.status(201).json(one);
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
-      delete payload.patient;
+      const { id, created_at, ...raw } = req.body;
+      const payload = sanitizeInvoice(raw);
       const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);

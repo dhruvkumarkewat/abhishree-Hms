@@ -25,14 +25,35 @@ export default async function handler(req, res) {
       return res.status(200).json(await enrich(data));
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('admissions').insert(req.body).select().single();
+      const payload = { ...req.body };
+      delete payload.id;
+      delete payload.patient;
+      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
+        payload.patient_id = Number(payload.patient_id);
+      }
+      if (payload.doctor_id !== undefined && payload.doctor_id !== null && payload.doctor_id !== '') {
+        payload.doctor_id = Number(payload.doctor_id);
+      }
+      if (payload.bed_id !== undefined && payload.bed_id !== null && payload.bed_id !== '') {
+        payload.bed_id = Number(payload.bed_id);
+      }
+      const { data, error } = await supabase.from('admissions').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
       return res.status(201).json(one);
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
+      const { id, created_at, ...payload } = req.body;
       delete payload.patient;
+      if (payload.patient_id !== undefined && payload.patient_id !== null && payload.patient_id !== '') {
+        payload.patient_id = Number(payload.patient_id);
+      }
+      if (payload.doctor_id !== undefined && payload.doctor_id !== null && payload.doctor_id !== '') {
+        payload.doctor_id = Number(payload.doctor_id);
+      }
+      if (payload.bed_id !== undefined && payload.bed_id !== null && payload.bed_id !== '') {
+        payload.bed_id = Number(payload.bed_id);
+      }
       const { data, error } = await supabase.from('admissions').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);

@@ -10,6 +10,32 @@ async function enrich(rows) {
   return rows.map((r) => ({ ...r, patient: map[r.patient_id] || null }));
 }
 
+function mapRadiology(r) {
+  if (!r) return r;
+  return {
+    ...r,
+    report: r.findings || r.report || '',
+    report_date: r.reported_date || r.report_date || null,
+  };
+}
+
+function sanitizeRadiology(body) {
+  const p = { ...body };
+  delete p.patient;
+  if (p.report !== undefined && !p.findings) {
+    p.findings = p.report;
+  }
+  if (p.report_date !== undefined && !p.reported_date) {
+    p.reported_date = p.report_date;
+  }
+  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
+    p.patient_id = Number(p.patient_id);
+  }
+  delete p.report;
+  delete p.report_date;
+  return p;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -22,21 +48,24 @@ export default async function handler(req, res) {
       if (req.query?.status) q = q.eq('status', req.query.status);
       const { data, error } = await q;
       if (error) throw error;
-      return res.status(200).json(await enrich(data));
+      const enriched = await enrich(data);
+      return res.status(200).json(enriched.map(mapRadiology));
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('radiology').insert(req.body).select().single();
+      const payload = sanitizeRadiology(req.body);
+      delete payload.id;
+      const { data, error } = await supabase.from('radiology').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
-      return res.status(201).json(one);
+      return res.status(201).json(mapRadiology(one));
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
-      delete payload.patient;
+      const { id, created_at, ...raw } = req.body;
+      const payload = sanitizeRadiology(raw);
       const { data, error } = await supabase.from('radiology').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
-      return res.status(200).json(one);
+      return res.status(200).json(mapRadiology(one));
     }
     if (req.method === 'DELETE') {
       const id = req.body?.id || req.query?.id;

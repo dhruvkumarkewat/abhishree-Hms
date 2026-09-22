@@ -6,7 +6,7 @@ import {
   AlertTriangle, Stethoscope, HeartPulse, ClipboardList, CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { get, inr, todayISO, fmtTime, fmtDate, post, logAudit } from '../lib/api';
+import { get, inr, todayISO, fmtTime, fmtDate, post, put, logAudit } from '../lib/api';
 import { useToast } from '../contexts/ToastContext';
 import { Stat, Badge, AlertBanner, SkeletonCards, Empty, SectionHead, Meter, Avatar } from '../components/ui';
 
@@ -218,10 +218,14 @@ function DoctorDash() {
     const flow: Record<string, string> = { 'Scheduled': 'Confirmed', 'Confirmed': 'Checked-in', 'Checked-in': 'In consultation', 'In consultation': 'Completed' };
     const next = flow[a.status];
     if (!next) return;
-    await post('/api/audit', { user_name: user!.name, user_role: 'Doctor', action: `Moved appointment #${a.id} to ${next}`, module: 'Appointments' });
-    await fetch('/api/appointments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, status: next }) });
-    toast({ kind: 'success', title: `Appointment ${next.toLowerCase()}`, desc: a.patient?.name });
-    load();
+    try {
+      await post('/api/audit', { user_name: user!.name, user_role: 'Doctor', action: `Moved appointment #${a.id} to ${next}`, module: 'Appointments' });
+      await put('/api/appointments', { id: a.id, status: next });
+      toast({ kind: 'success', title: `Appointment ${next.toLowerCase()}`, desc: a.patient?.name });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update appointment', desc: e.message });
+    }
   };
 
   if (loading) return <div className="space-y-4"><SkeletonCards /><div className="card p-5"><div className="skeleton h-40" /></div></div>;
@@ -454,10 +458,14 @@ function ReceptionDash() {
   const checked = appts.filter((a) => a.status === 'Checked-in');
 
   const checkIn = async (a: any) => {
-    await fetch('/api/appointments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, status: 'Checked-in' }) });
-    await logAudit({ user_name: user!.name, user_role: 'Receptionist', action: `Checked in ${a.patient?.name} (token ${a.token_number || a.id})`, module: 'OPD' });
-    toast({ kind: 'success', title: 'Patient checked in', desc: `${a.patient?.name} · Token ${a.token_number || a.id}` });
-    load();
+    try {
+      await put('/api/appointments', { id: a.id, status: 'Checked-in' });
+      await logAudit({ user_name: user!.name, user_role: 'Receptionist', action: `Checked in ${a.patient?.name} (token ${a.token_number || a.id})`, module: 'OPD' });
+      toast({ kind: 'success', title: 'Patient checked in', desc: `${a.patient?.name} · Token ${a.token_number || a.id}` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Check-in failed', desc: e.message });
+    }
   };
 
   if (loading) return <div className="space-y-4"><SkeletonCards /><div className="card p-5"><div className="skeleton h-40" /></div></div>;
@@ -566,10 +574,14 @@ function PharmacyDash() {
   const low = meds.filter((m) => Number(m.stock_quantity) <= Number(m.reorder_level));
 
   const dispense = async (r: any) => {
-    await fetch('/api/prescriptions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, status: 'Dispensed' }) });
-    await logAudit({ user_name: user!.name, user_role: 'Pharmacist', action: `Dispensed prescription #${r.id} for ${r.patient?.name}`, module: 'Pharmacy' });
-    toast({ kind: 'success', title: 'Prescription dispensed', desc: r.patient?.name });
-    load();
+    try {
+      await put('/api/prescriptions', { id: r.id, status: 'Dispensed' });
+      await logAudit({ user_name: user!.name, user_role: 'Pharmacist', action: `Dispensed prescription #${r.id} for ${r.patient?.name}`, module: 'Pharmacy' });
+      toast({ kind: 'success', title: 'Prescription dispensed', desc: r.patient?.name });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Dispense failed', desc: e.message });
+    }
   };
 
   if (loading) return <div className="space-y-4"><SkeletonCards /></div>;

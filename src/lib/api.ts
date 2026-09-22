@@ -48,20 +48,21 @@ export async function api<T = any>(path: string, options?: RequestInit & { json?
         bedByCategory: { 'General': { total: 50, occupied: 40 } },
         deptLoad: { 'Cardiology': 12 }
       } as any;
-      if (path.includes('/patients')) return [{ id: 1, patient_id: 'P-1001', name: 'Rahul Sharma', age: 45, gender: 'Male', phone: '+91 9876543210', status: 'Active', registration_date: td }] as any;
-      if (path.includes('/doctors')) return [{ id: 1, name: 'Dr. Vivek Singh', specialty: 'Cardiology', status: 'Available' }] as any;
-      if (path.includes('/appointments')) return [{ id: 1, patient_id: 1, doctor_id: 1, date: td, time: '10:30', status: 'Scheduled', department: 'Cardiology', appointment_type: 'New visit', patient: { name: 'Rahul Sharma' }, doctor: { name: 'Dr. Vivek Singh' } }] as any;
-      if (path.includes('/staff')) return [{ id: 1, name: 'Anjali Desai', role: 'Nurse', department: 'ICU', shift: 'Morning', status: 'Active' }] as any;
-      if (path.includes('/approvals')) return [{ id: 1, type: 'Leave Request', status: 'Pending', requested_by: 'Anjali Desai', details: 'Sick leave', created_at: new Date().toISOString() }] as any;
-      if (path.includes('/medicines') || path.includes('/inventory')) return [{ id: 1, name: 'Paracetamol 500mg', stock: 150, category: 'Tablet', status: 'In stock', min_stock: 50 }] as any;
-      if (path.includes('/invoices')) return [{ id: 1, invoice_number: 'INV-2026-0001', patient_id: 1, total: 500, paid: 500, balance: 0, status: 'Paid', invoice_date: td, patient: { name: 'Rahul Sharma' } }] as any;
-      if (path.includes('/departments')) return [{ id: 1, name: 'Cardiology', status: 'Available' }, { id: 2, name: 'Orthopedics', status: 'Available' }] as any;
-      if (path.includes('/beds')) return [{ id: 1, name: 'Ward A - Bed 1', category: 'General', status: 'Available', is_occupied: false }] as any;
-      if (path.includes('/vitals')) return [{ id: 1, patient_id: 1, temperature: '98.6', blood_pressure: '120/80', heart_rate: 75, recorded_at: new Date().toISOString() }] as any;
+      if (path.includes('/patients')) return [] as any;
+      if (path.includes('/doctors')) return [] as any;
+      if (path.includes('/appointments')) return [] as any;
+      if (path.includes('/staff')) return [] as any;
+      if (path.includes('/approvals')) return [] as any;
+      if (path.includes('/medicines') || path.includes('/inventory')) return [] as any;
+      if (path.includes('/invoices')) return [] as any;
+      if (path.includes('/departments')) return [] as any;
+      if (path.includes('/beds')) return [] as any;
+      if (path.includes('/vitals')) return [] as any;
       return [] as any;
     }
     
-    return (json ? { id: Math.floor(Math.random() * 9999) + 1, ...json } : { ok: true }) as any;
+    // For non-GET calls (POST, PUT, DELETE), throw the error so forms and operations do not pretend to succeed
+    throw err;
   }
 }
 

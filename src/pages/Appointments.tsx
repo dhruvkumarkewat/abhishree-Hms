@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { get, post, fmtTime, fmtDate, todayISO } from '../lib/api';
+import { get, post, put, fmtTime, fmtDate, todayISO } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Avatar } from '../components/ui';
@@ -60,10 +60,14 @@ export default function Appointments() {
   }, [rows, day, q, statusF, user]);
 
   const setStatus = async (a: any, status: string) => {
-    await fetch('/api/appointments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, status }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Set appointment #${a.id} (${a.patient?.name}) to ${status}`, module: 'Appointments' });
-    toast({ kind: 'success', title: `Marked ${status.toLowerCase()}`, desc: a.patient?.name });
-    load();
+    try {
+      await put('/api/appointments', { id: a.id, status });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Set appointment #${a.id} (${a.patient?.name}) to ${status}`, module: 'Appointments' });
+      toast({ kind: 'success', title: `Marked ${status.toLowerCase()}`, desc: a.patient?.name });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update appointment', desc: e.message });
+    }
   };
 
   const validate = () => {

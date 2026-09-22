@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Package, Plus, Minus, Truck } from 'lucide-react';
-import { get, post } from '../lib/api';
+import { get, post, put } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Meter, AlertBanner } from '../components/ui';
@@ -13,12 +13,12 @@ export default function Inventory() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [cat, setCat] = useState('');
   const [q, setQ] = useState('');
+  const [cat, setCat] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState({ item_name: '', category: 'Consumables', stock_quantity: '', reorder_level: '20', unit: 'pcs', supplier: '', expiry_date: '' });
 
-  const canManage = ['Admin', 'Pharmacist'].includes(user?.role || '');
+  const canManage = ['Admin', 'Pharmacist', 'Accountant'].includes(user?.role || '');
 
   const load = async () => {
     setLoading(true); setErr('');
@@ -34,19 +34,27 @@ export default function Inventory() {
   const shown = useMemo(() => rows.filter((r) => (!cat || r.category === cat) && (!q.trim() || r.item_name.toLowerCase().includes(q.trim().toLowerCase()))), [rows, cat, q]);
 
   const adjust = async (r: any, delta: number) => {
-    await fetch('/api/inventory', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, stock_quantity: Math.max(0, Number(r.stock_quantity) + delta) }) });
-    toast({ kind: 'success', title: delta > 0 ? 'Stock received' : 'Stock issued', desc: r.item_name });
-    load();
+    try {
+      await put('/api/inventory', { id: r.id, stock_quantity: Math.max(0, Number(r.stock_quantity) + delta) });
+      toast({ kind: 'success', title: delta > 0 ? 'Stock received' : 'Stock issued', desc: r.item_name });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to adjust stock', desc: e.message });
+    }
   };
 
   const add = async () => {
     if (!form.item_name.trim()) return toast({ kind: 'error', title: 'Item name is required' });
-    await post('/api/inventory', { ...form, stock_quantity: Number(form.stock_quantity) || 0, reorder_level: Number(form.reorder_level) || 0, expiry_date: form.expiry_date || null });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Added inventory item ${form.item_name}`, module: 'Inventory' });
-    toast({ kind: 'success', title: 'Item added to inventory' });
-    setShowNew(false);
-    setForm({ item_name: '', category: 'Consumables', stock_quantity: '', reorder_level: '20', unit: 'pcs', supplier: '', expiry_date: '' });
-    load();
+    try {
+      await post('/api/inventory', { ...form, stock_quantity: Number(form.stock_quantity) || 0, reorder_level: Number(form.reorder_level) || 0, expiry_date: form.expiry_date || null });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Added inventory item ${form.item_name}`, module: 'Inventory' });
+      toast({ kind: 'success', title: 'Item added to inventory' });
+      setShowNew(false);
+      setForm({ item_name: '', category: 'Consumables', stock_quantity: '', reorder_level: '20', unit: 'pcs', supplier: '', expiry_date: '' });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to add item', desc: e.message });
+    }
   };
 
   return (

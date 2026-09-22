@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { HeartPulse, FlaskConical, ScanLine, Pill, CalendarPlus, FileText, Save } from 'lucide-react';
-import { get, post, todayISO, fmtDate, fmtTime } from '../lib/api';
+import { get, post, put, todayISO, fmtDate, fmtTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Field, Badge, SectionHead, Avatar, Empty } from '../components/ui';
@@ -93,7 +93,7 @@ export default function Consult() {
       // mark today's appointment completed if exists
       const todays = (history.appts || []).find((a: any) => a.date === todayISO() && !['Completed', 'Cancelled'].includes(a.status));
       if (todays) {
-        await fetch('/api/appointments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: todays.id, status: 'Completed' }) });
+        await put('/api/appointments', { id: todays.id, status: 'Completed' });
       }
       await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Completed consultation for ${detail?.name}: ${diagnosis.trim()}`, module: 'Consultation' });
       toast({ kind: 'success', title: 'Consultation completed', desc: `${hasRx ? 'Prescription sent to pharmacy. ' : ''}${followUp ? 'Follow-up scheduled.' : ''}` });

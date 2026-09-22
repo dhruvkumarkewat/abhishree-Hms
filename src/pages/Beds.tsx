@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BedDouble, Clock } from 'lucide-react';
-import { get, post, fmtTime } from '../lib/api';
+import { get, post, put, fmtTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SectionHead, Avatar } from '../components/ui';
@@ -22,8 +22,8 @@ export default function Beds() {
   const load = async () => {
     setLoading(true); setErr('');
     try {
-      const b = await get('/api/beds');
-      setBeds(Array.isArray(b) ? b : []);
+      const data = await get('/api/beds');
+      setBeds(Array.isArray(data) ? data : []);
     } catch (e: any) { setErr(e.message); }
     setLoading(false);
   };
@@ -50,12 +50,16 @@ export default function Beds() {
 
   const updateBed = async () => {
     if (!newStatus) return;
-    await fetch('/api/beds', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: selected.id, status: newStatus, ...(newStatus === 'Available' ? { patient_id: null, patient_name: null } : {}) }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Set bed ${selected.bed_number} to ${newStatus}`, module: 'Beds' });
-    toast({ kind: 'success', title: `Bed ${selected.bed_number} → ${newStatus}` });
-    setSelected(null);
-    setNewStatus('');
-    load();
+    try {
+      await put('/api/beds', { id: selected.id, status: newStatus, ...(newStatus === 'Available' ? { patient_id: null, patient_name: null } : {}) });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Set bed ${selected.bed_number} to ${newStatus}`, module: 'Beds' });
+      toast({ kind: 'success', title: `Bed ${selected.bed_number} → ${newStatus}` });
+      setSelected(null);
+      setNewStatus('');
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update bed', desc: e.message });
+    }
   };
 
   return (

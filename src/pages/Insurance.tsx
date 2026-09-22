@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
-import { get, post, inr, fmtDate } from '../lib/api';
+import { get, post, put, inr, fmtDate } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Stat } from '../components/ui';
@@ -23,8 +23,8 @@ export default function Insurance() {
   const load = async () => {
     setLoading(true); setErr('');
     try {
-      const [c, p] = await Promise.all([get('/api/insurance'), get('/api/patients')]);
-      setRows(Array.isArray(c) ? c : []);
+      const [i, p] = await Promise.all([get('/api/insurance'), get('/api/patients')]);
+      setRows(Array.isArray(i) ? i : []);
       setPatients(Array.isArray(p) ? p : []);
     } catch (e: any) { setErr(e.message); }
     setLoading(false);
@@ -32,10 +32,14 @@ export default function Insurance() {
   useEffect(() => { load(); }, []);
 
   const move = async (c: any, status: string) => {
-    await fetch('/api/insurance', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, status }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Moved claim for ${c.patient?.name} (${c.provider}) to ${status}`, module: 'Insurance' });
-    toast({ kind: 'success', title: `Claim → ${status}` });
-    load();
+    try {
+      await put('/api/insurance', { id: c.id, status });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Moved claim for ${c.patient?.name} (${c.provider}) to ${status}`, module: 'Insurance' });
+      toast({ kind: 'success', title: `Claim → ${status}` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update claim', desc: e.message });
+    }
   };
 
   const file = async () => {

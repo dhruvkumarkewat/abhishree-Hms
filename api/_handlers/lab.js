@@ -10,6 +10,32 @@ async function enrich(rows) {
   return rows.map((r) => ({ ...r, patient: map[r.patient_id] || null }));
 }
 
+function mapLab(r) {
+  if (!r) return r;
+  return {
+    ...r,
+    result: r.report_text || r.result || '',
+    result_date: r.completed_date || r.result_date || null,
+  };
+}
+
+function sanitizeLab(body) {
+  const p = { ...body };
+  delete p.patient;
+  if (p.result !== undefined && !p.report_text) {
+    p.report_text = p.result;
+  }
+  if (p.result_date !== undefined && !p.completed_date) {
+    p.completed_date = p.result_date;
+  }
+  if (p.patient_id !== undefined && p.patient_id !== null && p.patient_id !== '') {
+    p.patient_id = Number(p.patient_id);
+  }
+  delete p.result;
+  delete p.result_date;
+  return p;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -22,21 +48,24 @@ export default async function handler(req, res) {
       if (req.query?.status) q = q.eq('status', req.query.status);
       const { data, error } = await q;
       if (error) throw error;
-      return res.status(200).json(await enrich(data));
+      const enriched = await enrich(data);
+      return res.status(200).json(enriched.map(mapLab));
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('lab_tests').insert(req.body).select().single();
+      const payload = sanitizeLab(req.body);
+      delete payload.id;
+      const { data, error } = await supabase.from('lab_tests').insert(payload).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
-      return res.status(201).json(one);
+      return res.status(201).json(mapLab(one));
     }
     if (req.method === 'PUT') {
-      const { id, ...payload } = req.body;
-      delete payload.patient;
+      const { id, created_at, ...raw } = req.body;
+      const payload = sanitizeLab(raw);
       const { data, error } = await supabase.from('lab_tests').update(payload).eq('id', id).select().single();
       if (error) throw error;
       const [one] = await enrich([data]);
-      return res.status(200).json(one);
+      return res.status(200).json(mapLab(one));
     }
     if (req.method === 'DELETE') {
       const id = req.body?.id || req.query?.id;

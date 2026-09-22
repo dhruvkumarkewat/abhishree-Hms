@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import { get, post, todayISO, fmtTime } from '../lib/api';
+import { get, post, put, todayISO, fmtTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Avatar } from '../components/ui';
@@ -23,12 +23,12 @@ export default function Emergency() {
   const [form, setForm] = useState({ patient_name: '', age: '', gender: 'Male', complaint: '', triage_level: 'High', doctor_name: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const canManage = !['Patient', 'Pharmacist', 'Accountant'].includes(user?.role || '');
+  const canManage = user?.role !== 'Patient';
 
   const load = async () => {
     setLoading(true); setErr('');
     try {
-      const [e, b] = await Promise.all([get('/api/emergency'), get('/api/beds?category=Emergency')]);
+      const [e, b] = await Promise.all([get('/api/emergency'), get('/api/beds')]);
       setRows(Array.isArray(e) ? e : []);
       setBeds(Array.isArray(b) ? b : []);
     } catch (e: any) { setErr(e.message); }
@@ -40,10 +40,14 @@ export default function Emergency() {
   const freeEmerg = beds.filter((b) => b.status === 'Available').length;
 
   const move = async (c: any, status: string) => {
-    await fetch('/api/emergency', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, status }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Moved emergency case ${c.case_id} to ${status}`, module: 'Emergency' });
-    toast({ kind: 'success', title: `${c.case_id} → ${status}` });
-    load();
+    try {
+      await put('/api/emergency', { id: c.id, status });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Moved emergency case ${c.case_id} to ${status}`, module: 'Emergency' });
+      toast({ kind: 'success', title: `${c.case_id} → ${status}` });
+      load();
+    } catch (err: any) {
+      toast({ kind: 'error', title: 'Failed to update case', desc: err.message });
+    }
   };
 
   const save = async () => {

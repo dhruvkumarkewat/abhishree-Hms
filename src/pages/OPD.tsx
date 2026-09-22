@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Clock, CheckCircle2 } from 'lucide-react';
-import { get, post, todayISO, fmtTime } from '../lib/api';
+import { get, post, put, todayISO, fmtTime } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Badge, Empty, LoadError, SectionHead, Avatar } from '../components/ui';
@@ -18,8 +18,8 @@ export default function OPD() {
   const load = async () => {
     setLoading(true); setErr('');
     try {
-      const a = await get(`/api/appointments?date=${todayISO()}`);
-      setRows(Array.isArray(a) ? a : []);
+      const d = await get(`/api/appointments?date=${todayISO()}`);
+      setRows(Array.isArray(d) ? d : []);
     } catch (e: any) { setErr(e.message); }
     setLoading(false);
   };
@@ -31,10 +31,14 @@ export default function OPD() {
   const waiting = shown.filter((r) => ['Scheduled', 'Confirmed', 'Checked-in'].includes(r.status));
 
   const act = async (a: any, status: string) => {
-    await fetch('/api/appointments', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, status }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `OPD: token ${a.token_number || a.id} (${a.patient?.name}) → ${status}`, module: 'OPD' });
-    toast({ kind: 'success', title: `Token ${a.token_number || a.id} ${status.toLowerCase()}` });
-    load();
+    try {
+      await put('/api/appointments', { id: a.id, status });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `OPD: token ${a.token_number || a.id} (${a.patient?.name}) → ${status}`, module: 'OPD' });
+      toast({ kind: 'success', title: `Token ${a.token_number || a.id} ${status.toLowerCase()}` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update token', desc: e.message });
+    }
   };
 
   return (

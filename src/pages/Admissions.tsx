@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, ArrowRightLeft, LogOut, BedDouble } from 'lucide-react';
-import { get, post, fmtDate, todayISO, inr } from '../lib/api';
+import { get, post, put, fmtDate, todayISO, inr } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, LoadError, SkeletonRows, SectionHead, Avatar } from '../components/ui';
@@ -77,7 +77,7 @@ export default function Admissions() {
         condition: 'Stable',
         admitted_by: user!.name,
       });
-      await fetch('/api/beds', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: bed.id, status: 'Occupied', patient_id: pat.id, patient_name: pat.name }) });
+      await put('/api/beds', { id: bed.id, status: 'Occupied', patient_id: pat.id, patient_name: pat.name });
       await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Admitted ${pat.name} to ${bed.bed_number} (${bed.ward})`, module: 'Admissions' });
       toast({ kind: 'success', title: 'Patient admitted', desc: `${pat.name} · Bed ${bed.bed_number}` });
       setShowNew(false);
@@ -89,24 +89,32 @@ export default function Admissions() {
 
   const discharge = async (a: any) => {
     if (!confirm(`Discharge ${a.patient?.name}? The bed will be released for cleaning.`)) return;
-    await fetch('/api/admissions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, status: 'Discharged', discharge_date: todayISO() }) });
-    if (a.bed_id) await fetch('/api/beds', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.bed_id, status: 'Cleaning', patient_id: null, patient_name: null }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Discharged ${a.patient?.name} from ${a.bed_number}`, module: 'Admissions' });
-    toast({ kind: 'success', title: 'Patient discharged', desc: `${a.bed_number} sent for cleaning` });
-    load();
+    try {
+      await put('/api/admissions', { id: a.id, status: 'Discharged', discharge_date: todayISO() });
+      if (a.bed_id) await put('/api/beds', { id: a.bed_id, status: 'Cleaning', patient_id: null, patient_name: null });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Discharged ${a.patient?.name} from ${a.bed_number}`, module: 'Admissions' });
+      toast({ kind: 'success', title: 'Patient discharged', desc: `${a.bed_number} sent for cleaning` });
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Discharge failed', desc: e.message });
+    }
   };
 
   const doTransfer = async () => {
     if (!transferBed) return;
-    const bed = beds.find((b) => String(b.id) === String(transferBed));
-    if (transfer.bed_id) await fetch('/api/beds', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: transfer.bed_id, status: 'Cleaning', patient_id: null, patient_name: null }) });
-    await fetch('/api/beds', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: bed.id, status: 'Occupied', patient_id: transfer.patient_id, patient_name: transfer.patient?.name }) });
-    await fetch('/api/admissions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: transfer.id, bed_id: bed.id, bed_number: bed.bed_number, ward: bed.ward, room_number: bed.room_number }) });
-    await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Transferred ${transfer.patient?.name} to ${bed.bed_number}`, module: 'Admissions' });
-    toast({ kind: 'success', title: 'Bed transferred', desc: `Now in ${bed.bed_number} · ${bed.ward}` });
-    setTransfer(null);
-    setTransferBed('');
-    load();
+    try {
+      const bed = beds.find((b) => String(b.id) === String(transferBed));
+      if (transfer.bed_id) await put('/api/beds', { id: transfer.bed_id, status: 'Cleaning', patient_id: null, patient_name: null });
+      await put('/api/beds', { id: bed.id, status: 'Occupied', patient_id: transfer.patient_id, patient_name: transfer.patient?.name });
+      await put('/api/admissions', { id: transfer.id, bed_id: bed.id, bed_number: bed.bed_number, ward: bed.ward, room_number: bed.room_number });
+      await post('/api/audit', { user_name: user!.name, user_role: user!.role, action: `Transferred ${transfer.patient?.name} to ${bed.bed_number}`, module: 'Admissions' });
+      toast({ kind: 'success', title: 'Bed transferred', desc: `Now in ${bed.bed_number} · ${bed.ward}` });
+      setTransfer(null);
+      setTransferBed('');
+      load();
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Transfer failed', desc: e.message });
+    }
   };
 
   return (
