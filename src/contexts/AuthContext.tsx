@@ -7,6 +7,8 @@ interface AuthCtx {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const Ctx = createContext<AuthCtx>({
@@ -14,6 +16,8 @@ const Ctx = createContext<AuthCtx>({
   loading: true,
   signIn: async () => ({ ok: false }),
   signOut: async () => {},
+  resetPasswordForEmail: async () => ({ ok: false }),
+  updatePassword: async () => ({ ok: false }),
 });
 
 function resolveUserFromSession(sessionUser: any): SessionUser {
@@ -96,7 +100,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  return <Ctx.Provider value={{ user, loading, signIn, signOut }}>{children}</Ctx.Provider>;
+  const resetPasswordForEmail = async (email: string) => {
+    const e = email.trim().toLowerCase();
+    if (!e) return { ok: false, error: 'Please enter your email address.' };
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo: redirectUrl,
+      });
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err.message || 'Failed to send password reset email.' };
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    if (!newPassword || newPassword.length < 6) {
+      return { ok: false, error: 'Password must be at least 6 characters long.' };
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err.message || 'Failed to update password.' };
+    }
+  };
+
+  return (
+    <Ctx.Provider value={{ user, loading, signIn, signOut, resetPasswordForEmail, updatePassword }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export const useAuth = () => useContext(Ctx);

@@ -5,6 +5,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { handleGoogleRedirect } from './lib/googleAuth';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import AppShell from './components/AppShell';
 import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
@@ -68,6 +69,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/app" element={<Protected><AppShell /></Protected>}>
                 <Route index element={<Dashboard />} />
                 <Route path="patients" element={<RoleGuard allow={STAFF}><Patients /></RoleGuard>} />
