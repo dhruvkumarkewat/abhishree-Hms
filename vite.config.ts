@@ -17,8 +17,10 @@ function vercelApiPlugin(): any {
         
         try {
           const [urlPath, search] = req.url.split('?')
-          const apiFilePath = path.join(__dirname, urlPath + '.js')
-          
+          let apiFilePath = path.join(__dirname, urlPath + '.js')
+          if (!fs.existsSync(apiFilePath)) {
+            apiFilePath = path.join(__dirname, 'api', 'index.js')
+          }
           if (!fs.existsSync(apiFilePath)) return next()
 
           // Polyfill req.query
