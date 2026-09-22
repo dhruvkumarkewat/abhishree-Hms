@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { Field, SectionHead } from '../components/ui';
+import supabase from '../lib/supabase';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -13,25 +14,31 @@ export default function Settings() {
   const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
   const [notif, setNotif] = useState({ email: true, sms: false, push: true, critical: true });
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!name.trim()) return toast({ kind: 'error', title: 'Name cannot be empty' });
     try {
-      const raw = localStorage.getItem('abhishree_session');
-      if (raw) {
-        const s = JSON.parse(raw);
-        s.name = name.trim();
-        localStorage.setItem('abhishree_session', JSON.stringify(s));
-      }
-    } catch { /* ignore */ }
-    toast({ kind: 'success', title: 'Profile updated', desc: 'Your display name was saved.' });
+      const { error } = await supabase.auth.updateUser({
+        data: { name: name.trim(), full_name: name.trim() }
+      });
+      if (error) throw error;
+      toast({ kind: 'success', title: 'Profile updated', desc: 'Your display name was saved.' });
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to update profile', desc: e.message });
+    }
   };
 
-  const changePwd = () => {
-    if (!pwd.current || !pwd.next) return toast({ kind: 'error', title: 'Fill both password fields' });
+  const changePwd = async () => {
+    if (!pwd.next) return toast({ kind: 'error', title: 'Enter a new password' });
     if (pwd.next.length < 6) return toast({ kind: 'error', title: 'New password must be at least 6 characters' });
     if (pwd.next !== pwd.confirm) return toast({ kind: 'error', title: 'New passwords do not match' });
-    setPwd({ current: '', next: '', confirm: '' });
-    toast({ kind: 'success', title: 'Password changed', desc: 'Use the new password at your next sign-in.' });
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwd.next });
+      if (error) throw error;
+      setPwd({ current: '', next: '', confirm: '' });
+      toast({ kind: 'success', title: 'Password changed successfully', desc: 'Your login password has been updated in Supabase.' });
+    } catch (e: any) {
+      toast({ kind: 'error', title: 'Failed to change password', desc: e.message });
+    }
   };
 
   const saveNotif = () => toast({ kind: 'success', title: 'Notification preferences saved' });
