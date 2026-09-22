@@ -14,8 +14,28 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
     if (req.method === 'POST') {
-      const { data, error } = await supabase.from('staff').insert(req.body).select().single();
+      const { password, ...staffData } = req.body;
+      const { data, error } = await supabase.from('staff').insert(staffData).select().single();
       if (error) throw error;
+
+      if (staffData.email && password) {
+        try {
+          await supabase.auth.admin.createUser({
+            email: staffData.email.trim().toLowerCase(),
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+              name: staffData.name,
+              full_name: staffData.name,
+              role: staffData.role,
+              department: staffData.department,
+            },
+          });
+        } catch (authErr) {
+          console.warn('Supabase Auth user creation note:', authErr.message);
+        }
+      }
+
       return res.status(201).json(data);
     }
     if (req.method === 'PUT') {

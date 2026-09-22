@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import supabase from '../lib/supabase';
-import { DEMO_USERS, sessionFromDemo, type SessionUser } from '../lib/roles';
+import { DEMO_USERS, type Role, type SessionUser } from '../lib/roles';
 
 interface AuthCtx {
   user: SessionUser | null;
@@ -9,15 +9,23 @@ interface AuthCtx {
   signOut: () => Promise<void>;
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, loading: true, signIn: async () => ({ ok: false }), signOut: async () => {} });
+const Ctx = createContext<AuthCtx>({
+  user: null,
+  loading: true,
+  signIn: async () => ({ ok: false }),
+  signOut: async () => {},
+});
 
-const KEY = 'abhishree_session';
+function resolveUserFromSession(sessionUser: any): SessionUser {
+  const email = (sessionUser.email || '').toLowerCase();
+  const meta = sessionUser.user_metadata || {};
+  const demo = DEMO_USERS.find((d) => d.email.toLowerCase() === email);
 
-function readLocal(): SessionUser | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  const role: Role = (meta.role as Role) || demo?.role || 'Patient';
+  const name: string = meta.name || meta.full_name || demo?.name || email.split('@')[0];
+  const link = meta.link || demo?.link;
+
+  return { name, email, role, link };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -25,88 +33,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1) local demo session
-    const local = readLocal();
-    if (local) {
-      setUser(local);
-      setLoading(false);
-      return;
-    }
-    // 2) real supabase session (email/google)
-    const isDummy = import.meta.env.VITE_SUPABASE_URL?.includes('abcdefghijklmnopqr');
-    if (isDummy) {
-      setLoading(false);
-      return;
-    }
+    // 1. Check existing verified Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) {
-        const demo = DEMO_USERS.find((d) => d.email.toLowerCase() === session.user.email!.toLowerCase());
-        if (demo) {
-          const s = sessionFromDemo(demo);
-          setUser(s);
-          localStorage.setItem(KEY, JSON.stringify(s));
-        } else {
-          // Any other authenticated user becomes a Patient-role explorer
-          const nm = session.user.user_metadata?.full_name || session.user.email!.split('@')[0];
-          const s: SessionUser = { name: nm, email: session.user.email!, role: 'Patient' };
-          setUser(s);
-          localStorage.setItem(KEY, JSON.stringify(s));
-        }
+      if (session?.user) {
+        setUser(resolveUserFromSession(session.user));
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    }).catch(() => {
+      setUser(null);
+      setLoading(false);
+    });
+
+    // 2. Listen to real-time auth state changes from Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(resolveUserFromSession(session.user));
+      } else {
+        setUser(null);
       }
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session?.user) return;
-      if (readLocal()) return;
-      const email = session.user.email!;
-      const demo = DEMO_USERS.find((d) => d.email.toLowerCase() === email.toLowerCase());
-      const s = demo ? sessionFromDemo(demo) : { name: session.user.user_metadata?.full_name || email.split('@')[0], email, role: 'Patient' as const };
-      setUser(s);
-      localStorage.setItem(KEY, JSON.stringify(s));
-    });
+
     return () => subscription.unsubscribe();
   }, []);
 
+  // Strict Supabase Authentication (no bypass, passwords verified on server)
   const signIn = async (email: string, password: string) => {
     const e = email.trim().toLowerCase();
-    const demo = DEMO_USERS.find((d) => d.email.toLowerCase() === e);
-    const isDummy = import.meta.env.VITE_SUPABASE_URL?.includes('abcdefghijklmnopqr');
-    if (demo) {
-      if (password !== demo.password) {
-        // still try real supabase auth (seeded users share these passwords)
-        if (isDummy) return { ok: false, error: 'Incorrect password for this demo account.' };
-        try {
-          const { error } = await supabase.auth.signInWithPassword({ email: e, password });
-          if (error) return { ok: false, error: 'Incorrect password for this demo account.' };
-        } catch {
-          return { ok: false, error: 'Incorrect password for this demo account.' };
-        }
-      }
-      // Establish supabase session in background (best effort)
-      if (!isDummy) supabase.auth.signInWithPassword({ email: e, password: demo.password }).catch(() => {});
-      const s = sessionFromDemo(demo);
-      setUser(s);
-      localStorage.setItem(KEY, JSON.stringify(s));
-      return { ok: true };
-    }
-    // Non-demo: real supabase auth
-    if (isDummy) return { ok: false, error: 'Sign in failed. Ensure Supabase is configured.' };
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: e, password });
-      if (error) return { ok: false, error: error.message };
-      const em = data.user?.email || e;
-      const s: SessionUser = { name: data.user?.user_metadata?.full_name || em.split('@')[0], email: em, role: 'Patient' };
-      setUser(s);
-      localStorage.setItem(KEY, JSON.stringify(s));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: e,
+        password: password,
+      });
+
+      if (error) {
+        return {
+          ok: false,
+          error: error.message || 'Invalid email or password. Please check your credentials.',
+        };
+      }
+
+      if (!data.user || !data.session) {
+        return { ok: false, error: 'Sign in failed. No active session established.' };
+      }
+
+      const verifiedUser = resolveUserFromSession(data.user);
+      setUser(verifiedUser);
       return { ok: true };
     } catch (err: any) {
-      return { ok: false, error: err.message || 'Sign in failed.' };
+      return { ok: false, error: err.message || 'Authentication service error.' };
     }
   };
 
   const signOut = async () => {
-    try { await supabase.auth.signOut(); } catch { /* noop */ }
-    localStorage.removeItem(KEY);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* noop */
+    }
     setUser(null);
   };
 

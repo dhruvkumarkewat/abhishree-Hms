@@ -11,7 +11,7 @@ export default function Login() {
   const nav = useNavigate();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('admin@abhishree.hospital');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState('Admin@AbhiShree2026!');
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
@@ -147,14 +147,17 @@ export default function Login() {
             )}
           </form>
 
-          {/* demo accounts */}
+          {/* Authorized Roles */}
           <div className="mt-7 border hairline rounded-2xl overflow-hidden bg-white dark:bg-ink-900">
             <button type="button" onClick={() => setShowAccounts(!showAccounts)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold">
-              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-teal-600" /> Explore with a demo account</span>
+              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-teal-600" /> Authorized Roles & Staff Accounts</span>
               <ChevronDown size={16} className={`transition-transform ${showAccounts ? 'rotate-180' : ''}`} />
             </button>
             {showAccounts && (
               <div className="px-2 pb-2 max-h-64 overflow-y-auto scroll-thin">
+                <div className="px-3 py-1.5 text-xs opacity-50 font-medium">
+                  Verified via Supabase Authentication:
+                </div>
                 {DEMO_USERS.map((u) => (
                   <button
                     key={u.email}
@@ -166,7 +169,7 @@ export default function Login() {
                       <div className="text-[13px] font-bold truncate">{u.name} <span className="opacity-50 font-semibold">· {u.role}</span></div>
                       <div className="text-xs opacity-55 truncate">{u.email}</div>
                     </div>
-                    <span className="text-[11px] font-mono opacity-50 shrink-0">{u.password}</span>
+                    <span className="text-[11px] font-mono opacity-50 shrink-0">••••••••</span>
                   </button>
                 ))}
               </div>

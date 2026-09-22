@@ -18,14 +18,14 @@ export interface DemoUser {
  * auth users are also seeded so real auth sessions function.
  */
 export const DEMO_USERS: DemoUser[] = [
-  { name: 'Aarav Sharma', email: 'admin@abhishree.hospital', role: 'Admin', password: 'admin123' },
-  { name: 'Dr. Meera Nair', email: 'doctor@abhishree.hospital', role: 'Doctor', password: 'doctor123', link: { doctorId: 1 } },
-  { name: 'Sister Lakshmi Rao', email: 'nurse@abhishree.hospital', role: 'Nurse', password: 'nurse123' },
-  { name: 'Rohan Verma', email: 'reception@abhishree.hospital', role: 'Receptionist', password: 'frontdesk123' },
-  { name: 'Kavya Iyer', email: 'pharmacy@abhishree.hospital', role: 'Pharmacist', password: 'pharma123' },
-  { name: 'Arjun Patel', email: 'lab@abhishree.hospital', role: 'Lab Technician', password: 'lab12345' },
-  { name: 'Neha Gupta', email: 'accounts@abhishree.hospital', role: 'Accountant', password: 'accounts123' },
-  { name: 'Vikram Malhotra', email: 'patient@abhishree.hospital', role: 'Patient', password: 'patient123', link: { patientId: 3 } },
+  { name: 'Aarav Sharma', email: 'admin@abhishree.hospital', role: 'Admin', password: 'Admin@AbhiShree2026!' },
+  { name: 'Dr. Meera Nair', email: 'doctor@abhishree.hospital', role: 'Doctor', password: 'Doctor@AbhiShree2026!', link: { doctorId: 1 } },
+  { name: 'Sister Lakshmi Rao', email: 'nurse@abhishree.hospital', role: 'Nurse', password: 'Nurse@AbhiShree2026!' },
+  { name: 'Rohan Verma', email: 'reception@abhishree.hospital', role: 'Receptionist', password: 'Reception@AbhiShree2026!' },
+  { name: 'Kavya Iyer', email: 'pharmacy@abhishree.hospital', role: 'Pharmacist', password: 'Pharma@AbhiShree2026!' },
+  { name: 'Arjun Patel', email: 'lab@abhishree.hospital', role: 'Lab Technician', password: 'LabTech@AbhiShree2026!' },
+  { name: 'Neha Gupta', email: 'accounts@abhishree.hospital', role: 'Accountant', password: 'Accounts@AbhiShree2026!' },
+  { name: 'Vikram Malhotra', email: 'patient@abhishree.hospital', role: 'Patient', password: 'Patient@AbhiShree2026!', link: { patientId: 3 } },
 ];
 
 export const ROLE_TAGLINES: Record<Role, string> = {
