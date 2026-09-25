@@ -1,4 +1,6 @@
 import { SUPABASE_URL } from './supabase';
+import { INITIAL_INVENTORY_CATEGORIES } from './inventoryCategories';
+import { ALL_HOSPITAL_DEPARTMENTS } from './departments';
 
 export async function api<T = any>(path: string, options?: RequestInit & { json?: any }): Promise<T> {
   const { json, ...rest } = options || {};
@@ -53,9 +55,10 @@ export async function api<T = any>(path: string, options?: RequestInit & { json?
       if (path.includes('/appointments')) return [] as any;
       if (path.includes('/staff')) return [] as any;
       if (path.includes('/approvals')) return [] as any;
+      if (path.includes('/inventory-categories')) return INITIAL_INVENTORY_CATEGORIES as any;
       if (path.includes('/medicines') || path.includes('/inventory')) return [] as any;
       if (path.includes('/invoices')) return [] as any;
-      if (path.includes('/departments')) return [] as any;
+      if (path.includes('/departments')) return ALL_HOSPITAL_DEPARTMENTS.map((name, i) => ({ id: i + 1, name, status: 'Available' })) as any;
       if (path.includes('/beds')) return [] as any;
       if (path.includes('/vitals')) return [] as any;
       return [] as any;

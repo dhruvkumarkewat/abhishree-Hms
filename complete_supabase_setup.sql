@@ -185,6 +185,14 @@ CREATE TABLE IF NOT EXISTS public.inventory (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 11b. INVENTORY CATEGORIES
+CREATE TABLE IF NOT EXISTS public.inventory_categories (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 12. LAB TESTS
 CREATE TABLE IF NOT EXISTS public.lab_tests (
     id SERIAL PRIMARY KEY,
@@ -340,7 +348,7 @@ DECLARE
     tbls text[] := ARRAY[
         'departments', 'doctors', 'patients', 'staff', 'beds', 'admissions',
         'appointments', 'emergency_cases', 'prescriptions', 'medicines',
-        'inventory', 'lab_tests', 'radiology', 'invoices', 'insurance_claims',
+        'inventory', 'inventory_categories', 'lab_tests', 'radiology', 'invoices', 'insurance_claims',
         'vitals', 'notifications', 'audit_logs', 'approvals', 'attendance', 'staff_profiles'
     ];
 BEGIN
@@ -358,11 +366,31 @@ END $$;
 -- Initial Departments
 INSERT INTO public.departments (name, head_doctor, location, phone, status)
 VALUES
+    ('General Medicine', 'Dr. Vikram Sethi', 'Block C, Ground Floor', '+91 98765 00004', 'Available'),
     ('Cardiology', 'Dr. Meera Nair', 'Block A, 2nd Floor', '+91 98765 00001', 'Available'),
     ('Orthopedics', 'Dr. Rajesh Patel', 'Block B, 1st Floor', '+91 98765 00002', 'Available'),
     ('Neurology', 'Dr. Ananya Sen', 'Block A, 3rd Floor', '+91 98765 00003', 'Available'),
-    ('General Medicine', 'Dr. Vikram Sethi', 'Block C, Ground Floor', '+91 98765 00004', 'Available'),
-    ('Pediatrics', 'Dr. Priya Sharma', 'Block B, 2nd Floor', '+91 98765 00005', 'Available')
+    ('Pediatrics', 'Dr. Priya Sharma', 'Block B, 2nd Floor', '+91 98765 00005', 'Available'),
+    ('Gynecology & Obstetrics', 'Dr. Sunita Rao', 'Block B, 3rd Floor', '+91 98765 00006', 'Available'),
+    ('Surgery / General Surgery', 'Dr. Alok Verma', 'OT Complex, 2nd Floor', '+91 98765 00007', 'Available'),
+    ('Dermatology', 'Dr. Ritu Kapoor', 'Block C, 1st Floor', '+91 98765 00008', 'Available'),
+    ('ENT', 'Dr. Manish Gupta', 'Block A, 1st Floor', '+91 98765 00009', 'Available'),
+    ('Ophthalmology', 'Dr. Sneha Joshi', 'Block A, Ground Floor', '+91 98765 00010', 'Available'),
+    ('Psychiatry', 'Dr. Arvind Saxena', 'Block D, 2nd Floor', '+91 98765 00011', 'Available'),
+    ('Urology', 'Dr. Sanjay Mishra', 'Block B, 4th Floor', '+91 98765 00012', 'Available'),
+    ('Nephrology', 'Dr. Deepa Kulkarni', 'Dialysis Unit, Block B', '+91 98765 00013', 'Available'),
+    ('Gastroenterology', 'Dr. Amit Bansal', 'Block C, 2nd Floor', '+91 98765 00014', 'Available'),
+    ('Pulmonology', 'Dr. Vivek Deshmukh', 'Block A, 4th Floor', '+91 98765 00015', 'Available'),
+    ('Endocrinology', 'Dr. Pooja Bhatia', 'Block C, 3rd Floor', '+91 98765 00016', 'Available'),
+    ('Oncology', 'Dr. Harish Chandra', 'Daycare Chemotherapy, Block D', '+91 98765 00017', 'Available'),
+    ('Radiology', 'Dr. Rohan Mathur', 'Diagnostic Wing, Ground Floor', '+91 98765 00018', 'Available'),
+    ('Pathology', 'Dr. Neelam Pandey', 'Central Lab, 1st Floor', '+91 98765 00019', 'Available'),
+    ('Anesthesiology', 'Dr. Sandeep Tiwary', 'OT Complex, 2nd Floor', '+91 98765 00020', 'Available'),
+    ('Critical Care / ICU', 'Dr. Meenakshi Sundaram', 'ICU Block, 2nd Floor', '+91 98765 00021', 'Available'),
+    ('Physiotherapy & Rehabilitation', 'Dr. Tarun Nambiar', 'Rehab Wing, Ground Floor', '+91 98765 00022', 'Available'),
+    ('Dental / Dentistry', 'Dr. Radhika Sen', 'Dental OPD, Block A', '+91 98765 00023', 'Available'),
+    ('Nutrition & Dietetics', 'Dt. Shalini Mehta', 'Dietetics Unit, Block C', '+91 98765 00024', 'Available'),
+    ('Emergency', 'Dr. Vikram Sethi', 'Emergency Wing, Ground Floor', '+91 98765 00025', 'Available')
 ON CONFLICT (name) DO NOTHING;
 
 -- Initial Doctors
@@ -415,6 +443,26 @@ VALUES
     ('Ceftriaxone 1g Inj', 'Injection', 'CEF-2026-09', 80, 20, 85.00, '2027-08-31', 'Dr. Reddy', 'In stock'),
     ('Salbutamol Inhaler', 'Inhaler', 'SAL-2026-04', 45, 15, 140.00, '2028-01-31', 'Cipla', 'In stock')
 ON CONFLICT DO NOTHING;
+
+-- Initial Inventory Categories
+INSERT INTO public.inventory_categories (name, description)
+VALUES
+    ('Medicines', 'Pharmaceutical drugs, tablets, syrups, antibiotics and formulations'),
+    ('Surgical', 'Surgical instruments, sutures, scalpels, and operation theatre supplies'),
+    ('Consumables', 'Cotton, gauze, syringes, bandages, disposable medical supplies'),
+    ('Equipment', 'Biomedical devices, monitors, infusion pumps, diagnostic machines'),
+    ('General', 'Hospital-wide general utilities and housekeeping provisions'),
+    ('Laboratory / Lab Supplies', 'Diagnostic reagents, test tubes, specimen containers, slides'),
+    ('PPE & Safety', 'Gloves, masks, gowns, face shields'),
+    ('Disinfectants & Cleaning', 'Hospital disinfectants, hand sanitizers, sterilization solutions'),
+    ('IV Fluids & Infusion', 'Saline, dextrose, ringer lactate, IV sets, cannulas'),
+    ('Implants & Prosthetics', 'Orthopedic implants, stents, pacemakers'),
+    ('Medical Gases', 'Oxygen cylinders, nitrous oxide, manifolds'),
+    ('Blood Bank / Blood Products', 'Blood bags, plasma, testing kits'),
+    ('Dental Supplies', 'Dental instruments, filling materials, tips'),
+    ('Radiology / Imaging Supplies', 'X-ray/CT/MRI related consumables'),
+    ('Office / Administrative Supplies', 'Stationery, registers, printer cartridges')
+ON CONFLICT (name) DO NOTHING;
 
 -- Reset sequences so autoincrement starts after seed IDs
 SELECT setval('public.patients_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.patients));

@@ -29,7 +29,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   try {
     if (req.method === 'GET') {
-      const { data, error } = await supabase.from('medicines').select('*').order('name', { ascending: true });
+      let q = supabase.from('medicines').select('*').order('name', { ascending: true });
+      if (req.query?.category) q = q.eq('category', req.query.category);
+      const { data, error } = await q;
       if (error) throw error;
       return res.status(200).json(data);
     }

@@ -98,10 +98,7 @@ export default async function handler(req, res) {
               updateParams.email_confirm = true;
             }
 
-            if (password && password.trim().length >= 6) {
-              updateParams.password = password.trim();
-            }
-
+            // Note: Password cannot be changed once created per security policy
             await supabase.auth.admin.updateUserById(existing.id, updateParams);
           } else if (newEmail && password && password.trim().length >= 6) {
             // If user did not exist in Auth, create them now

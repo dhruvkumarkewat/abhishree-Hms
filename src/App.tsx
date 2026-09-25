@@ -5,7 +5,6 @@ import { ToastProvider } from './contexts/ToastContext';
 import { handleGoogleRedirect } from './lib/googleAuth';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
-import ResetPassword from './pages/ResetPassword';
 import AppShell from './components/AppShell';
 import Dashboard from './pages/Dashboard';
 import Patients from './pages/Patients';
@@ -37,12 +36,8 @@ function handleRecoveryRedirect() {
   if (typeof window === 'undefined') return;
   const hash = window.location.hash || '';
   const search = window.location.search || '';
-  if (
-    (hash.includes('type=recovery') || search.includes('type=recovery')) &&
-    !window.location.pathname.startsWith('/reset-password')
-  ) {
-    const target = '/reset-password' + hash + (search && !hash.includes(search) ? search : '');
-    window.location.replace(target);
+  if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+    window.location.replace('/login');
   }
 }
 
@@ -83,7 +78,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/reset-password" element={<Navigate to="/login" replace />} />
               <Route path="/app" element={<Protected><AppShell /></Protected>}>
                 <Route index element={<Dashboard />} />
                 <Route path="patients" element={<RoleGuard allow={STAFF}><Patients /></RoleGuard>} />

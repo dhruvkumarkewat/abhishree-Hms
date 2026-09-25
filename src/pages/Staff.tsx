@@ -4,6 +4,7 @@ import { get, post, put, del } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Modal, Field, Badge, Empty, SkeletonRows, Pagination, SectionHead, Avatar } from '../components/ui';
+import { ALL_HOSPITAL_DEPARTMENTS } from '../lib/departments';
 
 export default function Staff() {
   const { user } = useAuth();
@@ -46,13 +47,21 @@ export default function Staff() {
   const canManage = user?.role === 'Admin';
 
   const ROLES = ['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Pharmacist', 'Lab Technician', 'Accountant'];
-  const DEPTS = ['General', 'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Emergency', 'ICU', 'Pharmacy', 'Lab', 'Billing', 'Management'];
+  const [departments, setDepartments] = useState<string[]>([...ALL_HOSPITAL_DEPARTMENTS]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await get('/api/staff');
+      const [data, deptData] = await Promise.all([
+        get('/api/staff'),
+        get('/api/departments').catch(() => [])
+      ]);
       setRows(Array.isArray(data) ? data : []);
+      if (Array.isArray(deptData) && deptData.length > 0) {
+        const names = deptData.map((d: any) => d.name).filter(Boolean);
+        const merged = Array.from(new Set([...ALL_HOSPITAL_DEPARTMENTS, ...names]));
+        setDepartments(merged);
+      }
     } catch {
       setRows([]);
     }
@@ -79,7 +88,9 @@ export default function Staff() {
   // Save new staff
   const saveNew = async () => {
     if (!form.name || !form.role) return toast({ kind: 'error', title: 'Name and role are required' });
-    if (form.password && form.password.length < 6) return toast({ kind: 'error', title: 'Password must be at least 6 characters' });
+    if (!form.password || form.password.length < 6) {
+      return toast({ kind: 'error', title: 'Password is required (min 6 characters) for initial staff setup' });
+    }
     setSaving(true);
     try {
       await post('/api/staff', form);
@@ -112,16 +123,14 @@ export default function Staff() {
   // Save edit staff
   const saveEdit = async () => {
     if (!editForm.name || !editForm.role) return toast({ kind: 'error', title: 'Name and role are required' });
-    if (editForm.password && editForm.password.length < 6) {
-      return toast({ kind: 'error', title: 'New password must be at least 6 characters' });
-    }
     setSaving(true);
     try {
-      await put('/api/staff', editForm);
+      const { password: _pwd, ...payload } = editForm;
+      await put('/api/staff', payload);
       toast({
         kind: 'success',
         title: 'Staff updated successfully',
-        desc: editForm.password ? 'Profile details and Supabase login password updated.' : 'Profile details updated.',
+        desc: 'Profile and department details saved.',
       });
       setShowEdit(false);
       load();
@@ -170,10 +179,10 @@ export default function Staff() {
             <option key={r}>{r}</option>
           ))}
         </select>
-        <select className="input sm:w-40" value={deptF} onChange={(e) => setDeptF(e.target.value)}>
-          <option value="">All departments</option>
-          {DEPTS.map((d) => (
-            <option key={d}>{d}</option>
+        <select className="input sm:w-60" value={deptF} onChange={(e) => setDeptF(e.target.value)}>
+          <option value="">All departments ({rows.length})</option>
+          {departments.map((d) => (
+            <option key={d} value={d}>{d}</option>
           ))}
         </select>
       </div>
@@ -230,10 +239,10 @@ export default function Staff() {
                             type="button"
                             className="btn btn-secondary btn-sm flex items-center gap-1.5 text-xs py-1 px-2.5"
                             onClick={() => openEdit(r)}
-                            title="Edit profile & reset password"
+                            title="Edit staff profile"
                           >
                             <KeyRound size={13} className="text-med-600" />
-                            <span>Edit / Access</span>
+                            <span>Edit Profile</span>
                           </button>
                           <button
                             type="button"
@@ -308,8 +317,10 @@ export default function Staff() {
             </Field>
             <Field label="Department">
               <select className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-                {DEPTS.map((d) => (
-                  <option key={d}>{d}</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -319,12 +330,16 @@ export default function Staff() {
               </Field>
             </div>
             <div className="sm:col-span-2">
-              <Field label="Login Password" hint="Initial password for Supabase Auth (min 6 characters)">
+              <Field
+                label="Login Password (One-Time Creation — Permanent)"
+                hint="Initial password for Supabase Auth (min 6 characters). Cannot be changed after creation."
+                required
+              >
                 <div className="relative">
                   <input
                     className="input !pr-10"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Set temporary password"
+                    placeholder="Enter permanent staff password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                   />
@@ -356,7 +371,7 @@ export default function Staff() {
       {showEdit && (
         <Modal
           title={`Edit ${editForm.name}`}
-          subtitle="Update staff details or modify their Supabase login email and password."
+          subtitle="Update staff details, assigned role, and contact information."
           onClose={() => setShowEdit(false)}
         >
           <div className="grid sm:grid-cols-2 gap-4">
@@ -374,8 +389,10 @@ export default function Staff() {
             </Field>
             <Field label="Department">
               <select className="input" value={editForm.department} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}>
-                {DEPTS.map((d) => (
-                  <option key={d}>{d}</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -393,24 +410,15 @@ export default function Staff() {
               </Field>
             </div>
             <div className="sm:col-span-2">
-              <Field
-                label="Reset Password"
-                hint="Leave blank to keep existing password, or enter a new one (min 6 chars) to reset"
-              >
-                <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
-                  <input
-                    className="input !pl-9 !pr-10"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter new password to change"
-                    value={editForm.password}
-                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100">
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+              <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 flex items-start gap-3">
+                <Lock size={18} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div className="text-xs">
+                  <div className="font-semibold text-amber-900 dark:text-amber-200">Password Permanently Locked</div>
+                  <div className="opacity-75 mt-0.5 text-amber-800 dark:text-amber-300">
+                    Per hospital security policy, staff passwords can only be configured once by the Admin during creation and cannot be modified again.
+                  </div>
                 </div>
-              </Field>
+              </div>
             </div>
             <Field label="Phone">
               <input className="input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
@@ -425,7 +433,7 @@ export default function Staff() {
           </div>
           <div className="flex justify-end gap-2 mt-6">
             <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save & Update Credentials'}</button>
+            <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save Profile Changes'}</button>
           </div>
         </Modal>
       )}

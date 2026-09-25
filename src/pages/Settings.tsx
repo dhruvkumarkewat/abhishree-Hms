@@ -11,7 +11,6 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
-  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
   const [notif, setNotif] = useState({ email: true, sms: false, push: true, critical: true });
 
   const saveProfile = async () => {
@@ -27,19 +26,6 @@ export default function Settings() {
     }
   };
 
-  const changePwd = async () => {
-    if (!pwd.next) return toast({ kind: 'error', title: 'Enter a new password' });
-    if (pwd.next.length < 6) return toast({ kind: 'error', title: 'New password must be at least 6 characters' });
-    if (pwd.next !== pwd.confirm) return toast({ kind: 'error', title: 'New passwords do not match' });
-    try {
-      const { error } = await supabase.auth.updateUser({ password: pwd.next });
-      if (error) throw error;
-      setPwd({ current: '', next: '', confirm: '' });
-      toast({ kind: 'success', title: 'Password changed successfully', desc: 'Your login password has been updated in Supabase.' });
-    } catch (e: any) {
-      toast({ kind: 'error', title: 'Failed to change password', desc: e.message });
-    }
-  };
 
   const saveNotif = () => toast({ kind: 'success', title: 'Notification preferences saved' });
 
@@ -79,14 +65,17 @@ export default function Settings() {
 
       {/* security */}
       <div className="card p-5 sm:p-6 mb-4">
-        <div className="font-bold flex items-center gap-2 mb-1"><Lock size={17} className="opacity-60" /> Security</div>
-        <div className="text-[13px] opacity-55 mb-4">Change the password you use to sign in to the portal.</div>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <Field label="Current password"><input type="password" className="input" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} /></Field>
-          <Field label="New password"><input type="password" className="input" value={pwd.next} onChange={(e) => setPwd({ ...pwd, next: e.target.value })} /></Field>
-          <Field label="Confirm new"><input type="password" className="input" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} /></Field>
+        <div className="font-bold flex items-center gap-2 mb-1"><Lock size={17} className="opacity-60" /> Security & Access Policy</div>
+        <div className="text-[13px] opacity-55 mb-4">Hospital portal authentication and password security policy.</div>
+        <div className="p-4 rounded-xl border border-sky-100 dark:border-sky-950 bg-sky-50/50 dark:bg-sky-950/20 flex items-start gap-3">
+          <Lock size={18} className="text-med-600 dark:text-sky-400 mt-0.5 shrink-0" />
+          <div className="text-xs sm:text-sm">
+            <div className="font-semibold text-slate-800 dark:text-slate-100">Permanent Password Policy Enforced</div>
+            <div className="opacity-75 mt-1 text-slate-600 dark:text-slate-300 leading-relaxed">
+              Login passwords are set strictly <strong>one time</strong> by the Hospital Administrator during staff account onboarding. Self-service password changes and reset requests are permanently disabled per hospital compliance standards.
+            </div>
+          </div>
         </div>
-        <div className="flex justify-end mt-4"><button className="btn btn-dark btn-sm" onClick={changePwd}>Change password</button></div>
       </div>
 
       {/* notifications */}

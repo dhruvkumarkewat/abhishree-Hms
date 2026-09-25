@@ -9,6 +9,7 @@ import doctors from './_handlers/doctors.js';
 import emergency from './_handlers/emergency.js';
 import insurance from './_handlers/insurance.js';
 import inventory from './_handlers/inventory.js';
+import inventoryCategories from './_handlers/inventory-categories.js';
 import invoices from './_handlers/invoices.js';
 import lab from './_handlers/lab.js';
 import medicines from './_handlers/medicines.js';
@@ -32,6 +33,8 @@ const routes = {
   emergency,
   insurance,
   inventory,
+  'inventory-categories': inventoryCategories,
+  inventory_categories: inventoryCategories,
   invoices,
   lab,
   medicines,

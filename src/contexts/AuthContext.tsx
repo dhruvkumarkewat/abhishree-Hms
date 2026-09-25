@@ -51,14 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // 2. Listen to real-time auth state changes from Supabase
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        if (!window.location.pathname.startsWith('/reset-password')) {
-          const hash = window.location.hash || '';
-          window.location.replace('/reset-password' + hash);
-          return;
-        }
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(resolveUserFromSession(session.user));
       } else {
@@ -107,75 +100,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const resetPasswordForEmail = async (email: string) => {
-    const e = email.trim().toLowerCase();
-    if (!e) return { ok: false, error: 'Please enter your email address.' };
-
-    try {
-      // 1. Verify if email exists in hospital records (staff, doctors, or patients)
-      const [sRes, dRes, pRes] = await Promise.all([
-        supabase.from('staff').select('id').ilike('email', e).limit(1),
-        supabase.from('doctors').select('id').ilike('email', e).limit(1),
-        supabase.from('patients').select('id').ilike('email', e).limit(1),
-      ]);
-
-      let exists = Boolean(
-        (sRes.data && sRes.data.length > 0) ||
-        (dRes.data && dRes.data.length > 0) ||
-        (pRes.data && pRes.data.length > 0)
-      );
-
-      // If not found in primary tables, double check check-email API for Auth-only accounts
-      if (!exists) {
-        try {
-          const apiCheck = await fetch(`/api/check-email?email=${encodeURIComponent(e)}`);
-          if (apiCheck.ok) {
-            const j = await apiCheck.json();
-            if (j.exists) exists = true;
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-
-      // If email is NOT found in the database, reject immediately and do NOT send mail
-      if (!exists) {
-        return {
-          ok: false,
-          error: 'This email address is not registered in our hospital database. Please check the spelling or contact your administrator.',
-        };
-      }
-
-      // 2. Email is verified to exist — proceed to send recovery link
-      const redirectUrl = `${window.location.origin}/reset-password`;
-      const { error } = await supabase.auth.resetPasswordForEmail(e, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        return { ok: false, error: error.message };
-      }
-      return { ok: true };
-    } catch (err: any) {
-      return { ok: false, error: err.message || 'Failed to send password reset email.' };
-    }
+  const resetPasswordForEmail = async (_email: string) => {
+    return {
+      ok: false,
+      error: 'Self-service password reset is disabled. Account passwords are created once by the Hospital Administrator and cannot be changed.',
+    };
   };
 
-  const updatePassword = async (newPassword: string) => {
-    if (!newPassword || newPassword.length < 6) {
-      return { ok: false, error: 'Password must be at least 6 characters long.' };
-    }
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      if (error) {
-        return { ok: false, error: error.message };
-      }
-      return { ok: true };
-    } catch (err: any) {
-      return { ok: false, error: err.message || 'Failed to update password.' };
-    }
+  const updatePassword = async (_newPassword: string) => {
+    return {
+      ok: false,
+      error: 'Password modification is disabled by hospital security policy. Passwords are set once at creation.',
+    };
   };
 
   return (
